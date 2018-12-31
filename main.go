@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"gitlab.com/sajfer/surbot/utils"
+	"surbot/utils"
 
 	"github.com/bwmarrin/discordgo"
 )
