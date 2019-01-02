@@ -19,4 +19,4 @@ spec:
         image: registry.gitlab.com/sajfer/surbot:master
         ports:
         - containerPort: 443
-      imagePullPolicy: Always
+        imagePullPolicy: Always
