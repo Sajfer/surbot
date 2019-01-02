@@ -15,11 +15,12 @@ before_script:
   - mkdir -p $GOPATH/src/$(dirname $REPO_NAME)
   - ln -svf $CI_PROJECT_DIR $GOPATH/src/$REPO_NAME
   - cd $GOPATH/src/$REPO_NAME
-  - go get -u github.com/bwmarrin/discordgo
 
 stages:
     - test
     - build
+    - release
+    - deploy
 
 format:
     stage: test
@@ -35,3 +36,24 @@ compile:
     artifacts:
       paths:
         - mybinary
+
+image_build:
+  stage: release
+  image: docker:latest
+  variables:
+    DOCKER_HOST: tcp://localhost:2375
+  services:
+    - docker:dind
+  script:
+    - docker info
+    - docker login -u gitlab-ci-token -p ${CI_JOB_TOKEN} registry.zerbytes.net
+    - docker build -t registry.zerbytes.net/${CI_PROJECT_PATH}:latest .
+    - docker tag registry.zerbytes.net/${CI_PROJECT_PATH}:latest registry.zerbytes.net/${CI_PROJECT_PATH}:${CI_COMMIT_REF_NAME}
+    - test ! -z "${CI_COMMIT_TAG}" && docker push registry.zerbytes.net/${CI_PROJECT_PATH}:latest
+    - docker push registry.zerbytes.net/${CI_PROJECT_PATH}:${CI_COMMIT_REF_NAME}
+
+deploy to production:
+  stage: deploy
+  script: echo "Deploy"
+  environment:
+    name: production
