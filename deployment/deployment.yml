@@ -1,0 +1,21 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: surbot-deployment
+spec:
+  selector:
+    matchLabels:
+      app: surbot
+  replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: surbot
+    spec:
+      imagePullSecrets:
+      - name: gitlab-registry
+      containers:
+      - name: surbot
+        image: surbot:latest
+        ports:
+        - containerPort: 443
