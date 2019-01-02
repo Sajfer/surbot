@@ -10,4 +10,4 @@ COPY surbot /bin/surbot
 RUN chmod +x /bin/surbot
 
 # Run bot
-ENTRYPOINT ["/bin/surbot -t $DISCORD_SECRET"]
+ENTRYPOINT ["/bin/surbot", "-t", "$DISCORD_SECRET"]
