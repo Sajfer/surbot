@@ -63,6 +63,7 @@ deploy to production:
     name: production
   script:
     - kubectl version
+    - kubectl delete secret gitlab-registry
     - kubectl create secret docker-registry gitlab-registry
       --docker-server="${CI_REGISTRY}"
       --docker-username="${CI_REGISTRY_USER}"
