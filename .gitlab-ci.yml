@@ -65,7 +65,7 @@ deploy to production:
     - kubectl version
     - kubectl create secret docker-registry gitlab-auth \
       --docker-server=https://registry.gitlab.com \
-      --docker-username=${CI_REGISTRY_USER} \
-      --docker-password=${CI_REGISTRY_PASSWORD} \
-      --docker-email=${GITLAB_USER_EMAIL}
+      --docker-username=${user_login} \
+      --docker-password=${user_password} \
+      --docker-email=${user_email}
     - kubectl run surbot --image=registry.gitlab.com/${CI_PROJECT_PATH}:latest --port=443
