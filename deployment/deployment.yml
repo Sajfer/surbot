@@ -16,6 +16,6 @@ spec:
       - name: gitlab-registry
       containers:
       - name: surbot
-        image: surbot:latest
+        image: surbot:master
         ports:
         - containerPort: 443
