@@ -34,7 +34,7 @@ compile:
     stage: build
     script:
       - go get -u github.com/bwmarrin/discordgo
-      - OOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -race -ldflags "-extldflags '-static'" -o surbot
+      - go build -race -ldflags "-extldflags '-static'" -o surbot
     artifacts:
       paths:
         - surbot
