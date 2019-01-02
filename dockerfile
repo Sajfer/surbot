@@ -6,8 +6,10 @@ ENV DISCORD_SECRET=${discord_secret}
 RUN echo $discord_secret
 
 # Add surbot
+COPY deployment/docker_run.sh docker_run.sh
+RUN chmod +x docker_run.sh
 COPY surbot /bin/surbot
 RUN chmod +x /bin/surbot
 
 # Run bot
-CMD ["/bin/surbot", "-t", "$DISCORD_SECRET"]
+CMD ["docker_run.sh"]
