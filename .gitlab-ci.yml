@@ -65,11 +65,11 @@ deploy to production:
     name: production
   script:
     - kubectl version
-    - kubectl delete secret gitlab-registry || true
+    - kubectl delete secret gitlab-registry --ignore-not-found
     - kubectl create secret docker-registry gitlab-registry
       --docker-server="${CI_REGISTRY}"
-      --docker-username="${CI_REGISTRY_USER}"
-      --docker-password="${CI_REGISTRY_PASSWORD}"
+      --docker-username="${kube_user}"
+      --docker-password="${kube_password}"
       --docker-email="${GITLAB_USER_EMAIL}"
 
     - sed -i "s/<TAG>/${CI_COMMIT_SHA}/" deployment/deployment.yml
