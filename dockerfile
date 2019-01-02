@@ -1,10 +1,7 @@
-# Base image:
-FROM golang:1.11
+FROM busybox:1.28.4-glibc
 
-# Install golint
-ENV GOPATH /go
-ENV PATH ${GOPATH}/bin:$PATH
-RUN go get -u github.com/golang/lint/golint
+COPY surbot /bin/surbot
 
-#CMD ["/bin/bash"]
-#WORKDIR /go
+RUN chmod +x /bin/surbot
+
+CMD ["/bin/surbot"]
