@@ -16,7 +16,7 @@ spec:
       - name: gitlab-registry
       containers:
       - name: surbot
-        image: registry.gitlab.com/sajfer/surbot:master
+        image: registry.gitlab.com/sajfer/surbot:<TAG>
         ports:
         - containerPort: 443
         imagePullPolicy: Always
