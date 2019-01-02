@@ -56,6 +56,11 @@ image_build:
 
 deploy to production:
   stage: deploy
-  script: echo "Deploy"
+  image:
+    name: lachlanevenson/k8s-kubectl:latest
+    entrypoint: ["/bin/sh", "-c"]
   environment:
     name: production
+  script:
+    - kubectl version
+    - kubectl run surbot --image=gregistry.gitlab.com/${CI_PROJECT_PATH}:latest --port=443
