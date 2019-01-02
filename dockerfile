@@ -10,4 +10,4 @@ COPY surbot /bin/surbot
 RUN chmod +x /bin/surbot
 
 # Run bot
-CMD ["/bin/surbot -t $DISCORD_SECRET"]
+CMD ["/bin/surbot", "-t", "$DISCORD_SECRET"]
