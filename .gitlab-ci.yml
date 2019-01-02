@@ -72,5 +72,5 @@ deploy to production:
       --docker-password="${CI_REGISTRY_PASSWORD}"
       --docker-email="${GITLAB_USER_EMAIL}"
 
-    - sed -i 's/<TAG>/${CI_COMMIT_SHA}/' deployment/deployment.yml
+    - sed -ri "s|\"<TAG>\"|\"${CI_COMMIT_SHA}\"|" deployment/deployment.yml
     - kubectl apply -f deployment/deployment.yml
