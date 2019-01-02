@@ -4,4 +4,6 @@ COPY surbot /bin/surbot
 
 RUN chmod +x /bin/surbot
 
-CMD ["/bin/surbot -t $discord_secret"]
+ENV DISCORD_SECRET=$discord_secret
+
+CMD ["/bin/surbot -t $DISCORD_SECRET"]
