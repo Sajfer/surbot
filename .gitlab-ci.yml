@@ -74,3 +74,4 @@ deploy to production:
 
     - sed -i "s/<TAG>/${CI_COMMIT_SHA}/" deployment/deployment.yml
     - kubectl apply -f deployment/deployment.yml
+    - sleep 30
