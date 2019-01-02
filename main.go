@@ -1,4 +1,4 @@
-package surbot
+package main
 
 import (
 	"flag"
