@@ -1,4 +1,4 @@
-FROM golang:alpine
+FROM busybox:glibc
 
 # Setup of discord token
 ARG discord_secret
