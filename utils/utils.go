@@ -33,6 +33,15 @@ func GetChannel(server *discordgo.Guild, name string) *discordgo.Channel {
 	return nil
 }
 
+// GetRole return the name of a role
+func GetRole(state *discordgo.State, guildID, roleID string) (string, error) {
+	role, err := state.Role(guildID, roleID)
+	if err != nil {
+		return "", err
+	}
+	return role.Name, nil
+}
+
 // PrintHelp print the avalible command for the bot
 func PrintHelp(s *discordgo.Session, channel string) {
 	s.ChannelMessageSend(channel,

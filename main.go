@@ -85,9 +85,10 @@ func changedChannel(s *discordgo.Session, m *discordgo.VoiceStateUpdate) {
 		return
 	}
 
-	avatar := user.AvatarURL("32x32")
+	avatar := user.AvatarURL("")
 
 	channel, err := s.Channel(m.VoiceState.ChannelID)
+
 	if err != nil {
 		embed := &discordgo.MessageEmbed{
 			Author: &discordgo.MessageEmbedAuthor{
@@ -102,16 +103,35 @@ func changedChannel(s *discordgo.Session, m *discordgo.VoiceStateUpdate) {
 		return
 	}
 
-	embed := &discordgo.MessageEmbed{
-		Author: &discordgo.MessageEmbedAuthor{
-			Name:    user.Username,
-			IconURL: avatar,
-		},
-		Color:     0x00ff00,                        // Green
-		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
-		Title:     "Moved to \"" + channel.Name + "\"",
+	permissions := channel.PermissionOverwrites
+
+	allowedToSee := true
+
+	for _, permission := range permissions {
+		role, err := utils.GetRole(s.State, m.VoiceState.GuildID, permission.ID)
+		if err != nil {
+			fmt.Println("Could not get Role name")
+		}
+		if role == "@everyone" {
+			if permission.Deny&0x00000400 > 0 { // Check if everyone is allowed to see channel
+				allowedToSee = false
+			}
+		}
 	}
-	s.ChannelMessageSendEmbed(logChannel.ID, embed)
+
+	if allowedToSee {
+		embed := &discordgo.MessageEmbed{
+			Author: &discordgo.MessageEmbedAuthor{
+				Name:    user.Username,
+				IconURL: avatar,
+			},
+			Color:     0x00ff00,                        // Green
+			Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
+			Title:     "Moved to \"" + channel.Name + "\"",
+		}
+
+		s.ChannelMessageSendEmbed(logChannel.ID, embed)
+	}
 }
 
 func main() {
