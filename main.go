@@ -24,7 +24,7 @@ var (
 func init() {
 
 	flag.StringVar(&Token, "t", "", "Bot Token")
-	flag.StringVar(&Prefix, "p", "", "Bot Prefix")
+	flag.StringVar(&Prefix, "p", "!", "Bot Prefix")
 	flag.Parse()
 
 	Version = "0.0.1"
@@ -67,8 +67,6 @@ func messageReceived(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 func changedChannel(s *discordgo.Session, m *discordgo.VoiceStateUpdate) {
 
-	t := time.Now()
-
 	user, err := s.User(m.UserID)
 	if err != nil {
 		fmt.Println("error found no user,", err)
@@ -87,13 +85,33 @@ func changedChannel(s *discordgo.Session, m *discordgo.VoiceStateUpdate) {
 		return
 	}
 
+	avatar := user.AvatarURL("32x32")
+
 	channel, err := s.Channel(m.VoiceState.ChannelID)
 	if err != nil {
-		s.ChannelMessageSend(logChannel.ID, "("+t.Format("15:04")+") **"+user.Username+"** have **disconnected**")
+		embed := &discordgo.MessageEmbed{
+			Author: &discordgo.MessageEmbedAuthor{
+				Name:    user.Username,
+				IconURL: avatar,
+			},
+			Color:     0xf08080,                        // Red
+			Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
+			Title:     "Disconnected",
+		}
+		s.ChannelMessageSendEmbed(logChannel.ID, embed)
 		return
 	}
 
-	s.ChannelMessageSend(logChannel.ID, "("+t.Format("15:04")+") **"+user.Username+"** have moved to **"+channel.Name+"**")
+	embed := &discordgo.MessageEmbed{
+		Author: &discordgo.MessageEmbedAuthor{
+			Name:    user.Username,
+			IconURL: avatar,
+		},
+		Color:     0x00ff00,                        // Green
+		Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
+		Title:     "Moved to \"" + channel.Name + "\"",
+	}
+	s.ChannelMessageSendEmbed(logChannel.ID, embed)
 }
 
 func main() {
