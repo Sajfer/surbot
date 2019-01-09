@@ -1,26 +1,60 @@
 package utils
 
 import (
-	"fmt"
+	"encoding/json"
+	"io/ioutil"
+	"log"
 	"net/http"
 
 	"github.com/bwmarrin/discordgo"
 )
 
-// GetWebsite returns the content of a website
-func GetWebsite(addr string) string {
-	response, err := http.Get(addr)
+type chuckResponse struct {
+	Type  string `json:"type"`
+	Value inner  `json:"value"`
+}
+
+type inner struct {
+	ID         int      `json:"id"`
+	Joke       string   `json:"joke"`
+	Categories []string `json:"categories"`
+}
+
+// GetChuckJoke return a chuck norris joke
+func GetChuckJoke() string {
+
+	body := GetWebsite("http://api.icndb.com/jokes/random")
+
+	chuckresp := chuckResponse{}
+	err := json.Unmarshal(body, &chuckresp)
 	if err != nil {
-		fmt.Println("error found no user,", err)
+		log.Println("Could not get chuck norris joke,", err)
 		return ""
 	}
+
+	return chuckresp.Value.Joke
+}
+
+// GetWebsite returns the content of a website
+func GetWebsite(addr string) []byte {
+	response, err := http.Get(addr)
+	if err != nil {
+		log.Println("Could not get website,", err)
+		return []byte{}
+	}
 	if response.Status != "200 OK" {
-		fmt.Println("error status != 200,", response.Status)
-		return ""
+		log.Println("error status != 200,", response.Status)
+		return []byte{}
+	}
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Println("Could not read website body,", err)
+		return []byte{}
 	}
 	defer response.Body.Close()
 
-	return ""
+	return body
 }
 
 // GetChannel return the channel object of a channel
@@ -48,5 +82,6 @@ func PrintHelp(s *discordgo.Session, channel string) {
 		"Avalible commands: \n"+
 			"**help**: Show this command\n"+
 			"**ping**: Respods with pong!\n"+
-			"**version**: Responds with bot version")
+			"**version**: Responds with bot version"+
+			"**chuck**: Responds with chuck norris joke")
 }

@@ -1,7 +1,7 @@
 package surbot
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"strings"
@@ -55,7 +55,8 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "chuck" {
-		utils.GetWebsite("http://api.icndb.com/jokes/random")
+		joke := utils.GetChuckJoke()
+		s.ChannelMessageSend(m.ChannelID, joke)
 	}
 
 }
@@ -64,19 +65,19 @@ func (surbot Surbot) changedChannel(s *discordgo.Session, m *discordgo.VoiceStat
 
 	user, err := s.User(m.UserID)
 	if err != nil {
-		fmt.Println("error found no user,", err)
+		log.Println("error found no user,", err)
 		return
 	}
 
 	server, err := s.Guild(m.VoiceState.GuildID)
 	if err != nil {
-		fmt.Println("error found no server,", err)
+		log.Println("error found no server,", err)
 		return
 	}
 
 	logChannel := utils.GetChannel(server, "log")
 	if logChannel == nil {
-		fmt.Println("No channel found")
+		log.Println("No channel found")
 		return
 	}
 
@@ -105,7 +106,7 @@ func (surbot Surbot) changedChannel(s *discordgo.Session, m *discordgo.VoiceStat
 	for _, permission := range permissions {
 		role, err := utils.GetRole(s.State, m.VoiceState.GuildID, permission.ID)
 		if err != nil {
-			fmt.Println("Could not get Role name")
+			log.Println("Could not get Role name")
 		}
 		if role == "@everyone" {
 			if permission.Deny&0x00000400 > 0 { // Check if everyone is allowed to see channel
@@ -133,7 +134,7 @@ func (surbot Surbot) changedChannel(s *discordgo.Session, m *discordgo.VoiceStat
 func (surbot Surbot) StartServer() {
 	discord, err := discordgo.New("Bot " + surbot.token)
 	if err != nil {
-		fmt.Println("error creating Discord session,", err)
+		log.Println("error creating Discord session,", err)
 		return
 	}
 
@@ -145,12 +146,12 @@ func (surbot Surbot) StartServer() {
 	// Open a websocket connection to Discord and begin listening.
 	err = discord.Open()
 	if err != nil {
-		fmt.Println("error opening connection,", err)
+		log.Println("error opening connection,", err)
 		return
 	}
 
 	// Wait here until CTRL-C or other term signal is received.
-	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
+	log.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 	<-sc

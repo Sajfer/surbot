@@ -19,7 +19,7 @@ func init() {
 	flag.StringVar(&Prefix, "p", "!", "Bot Prefix")
 	flag.Parse()
 
-	Version = "1.1.0"
+	Version = "1.2.0"
 }
 
 func main() {
