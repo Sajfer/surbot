@@ -106,19 +106,29 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		}
 
 		logger.Log.Debugf("Title: %s\n", youtubeDl.Info.Title)
-
 		cmd.Wait()
+	}
 
-	}	roll = rand.Intn(20)
+	if strings.HasPrefix(message, "roll") {
+		dice := strings.TrimPrefix(message, "roll")
+		dice = strings.ReplaceAll(dice, " ", "")
+		var roll = 0
+		switch dice {
+		case "d6":
+			roll = rand.Intn(6)
+		case "d10":
+			roll = rand.Intn(10)
+		case "d20":
+			roll = rand.Intn(20)
 		case "d100":
 			roll = rand.Intn(100)
 		}
-
 		_, err := s.ChannelMessageSend(m.ChannelID, strconv.Itoa(roll))
 		if err != nil {
 			logger.Log.Warning("could not send message,", err)
 		}
 	}
+
 
 }
 
