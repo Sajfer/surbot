@@ -1,0 +1,10 @@
+debug
+*.exe
+.vscode
+
+debug.*
+
+vendor/
+
+out/
+bin/

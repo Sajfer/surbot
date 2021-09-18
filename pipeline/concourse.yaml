@@ -1,0 +1,55 @@
+---
+resources:
+  - name: surbot-git
+    type: git
+    icon: github
+    source:
+      uri: git@github.com:sajfer/surbot.git
+      private_key: |
+        ((gitlab.ssh_key))
+
+jobs:
+  - name: set-self
+    public: true
+    plan:
+      - get: surbot-git
+        trigger: true
+      - set_pipeline: surbot
+        file: surbot-git/pipeline/concourse.yaml
+  - name: build
+    public: true
+    plan:
+      - get: surbot-git
+        trigger: true
+        passed: [set-self]
+      - task: compile
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: { repository: golang, tag: "latest" }
+          inputs:
+            - name: surbot-git
+          run:
+            path: /bin/sh
+            args:
+              - -c
+              - |
+                cd surbot-git
+                make
+      - task: docker
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: { repository: golang, tag: "latest" }
+          inputs:
+            - name: surbot-git
+          run:
+            path: /bin/sh
+            args:
+              - -c
+              - |
+                cd surbot-git
+                docker build -t surbot .
+
