@@ -1,7 +1,6 @@
 package surbot
 
 import (
-	"io"
 	"log"
 	"math/rand"
 	"os"
@@ -59,8 +58,6 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		}
 	}
 
-
-
 	if message == "help" {
 		utils.PrintHelp(s, m.ChannelID)
 	}
@@ -73,40 +70,29 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		}
 	}
 
-	if strings.HasPrefix(message, "roll") {
-		dice := strings.TrimPrefix(message, "roll")
-		dice = strings.ReplaceAll(dice, " ", "")
-		var roll = 0
-
-		switch dice {
-		case "d6":
-			roll = rand.Intn(6)
-		case "d10":
-			roll = rand.Intn(10)
-		case "d20":
-			if strings.HasPrefix(message, "play") {
+	if strings.HasPrefix(message, "play") {
 		logger.Log.Debugln("Playing music")
 		song := strings.TrimPrefix(message, "play")
 		song = strings.ReplaceAll(song, " ", "")
 		logger.Log.Debugf("selected song: %s", song)
 
-		youtubeDl := youtube.NewYoutubeDl()
+		// youtubeDl := youtube.NewYoutubeDl()
 
-		youtubeDl.Options.Output.Value = "video.mp3"
-		youtubeDl.Options.ExtractAudio.Value = true
-		youtubeDl.Options.AudioFormat.Value = "mp3"
+		// youtubeDl.Options.Output.Value = "video.mp3"
+		// youtubeDl.Options.ExtractAudio.Value = true
+		// youtubeDl.Options.AudioFormat.Value = "mp3"
 
-		go io.Copy(os.Stdout, youtubeDl.Stdout)
-		go io.Copy(os.Stderr, youtubeDl.Stderr)
+		// go io.Copy(os.Stdout, youtubeDl.Stdout)
+		// go io.Copy(os.Stderr, youtubeDl.Stderr)
 
-		cmd, err := youtubeDl.Download(song)
+		// cmd, err := youtubeDl.Download(song)
 
-		if err != nil {
-			logger.Log.Warning("could not download song", err)
-		}
+		// if err != nil {
+		// 	logger.Log.Warning("could not download song", err)
+		// }
 
-		logger.Log.Debugf("Title: %s\n", youtubeDl.Info.Title)
-		cmd.Wait()
+		// logger.Log.Debugf("Title: %s\n", youtubeDl.Info.Title)
+		// cmd.Wait()
 	}
 
 	if strings.HasPrefix(message, "roll") {
@@ -128,21 +114,19 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 			logger.Log.Warning("could not send message,", err)
 		}
 	}
-
-
 }
 
 func (surbot Surbot) changedChannel(s *discordgo.Session, m *discordgo.VoiceStateUpdate) {
 
 	user, err := s.User(m.UserID)
 	if err != nil {
-		logger.Log.Warningf("could not find user %s", m.UserID, err)
+		logger.Log.Warningf("could not find user %s, err=%s", m.UserID, err)
 		return
 	}
 
 	server, err := s.Guild(m.VoiceState.GuildID)
 	if err != nil {
-		logger.Log.Warningf("could not find server %s", m.VoiceState.GuildID, err)
+		logger.Log.Warningf("could not find server %s, err=%s", m.VoiceState.GuildID, err)
 		return
 	}
 
