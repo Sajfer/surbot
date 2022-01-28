@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"math"
 	"math/rand"
 	"net/http"
+	"os"
+	"strconv"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -29,6 +32,43 @@ func RandomString(n int) string {
 		s[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(s)
+}
+
+func zeroPad(str string) (result string) {
+	if len(str) < 2 {
+		result = "0" + str
+	} else {
+		result = str
+	}
+	return
+}
+
+func SecondsToHuman(input float64) (result string) {
+	hours := math.Floor(float64(input) / 60 / 60)
+	seconds := int(input) % (60 * 60)
+	minutes := math.Floor(float64(seconds) / 60)
+	seconds = int(input) % 60
+
+	if hours > 0 {
+		result = strconv.Itoa(int(hours)) + ":" + zeroPad(strconv.Itoa(int(minutes))) + ":" + zeroPad(strconv.Itoa(int(seconds)))
+	} else {
+		result = zeroPad(strconv.Itoa(int(minutes))) + ":" + zeroPad(strconv.Itoa(int(seconds)))
+	}
+
+	return
+}
+
+func CheckFileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
+func FloatToString(input_num float64) string {
+	// to convert a float number to a string
+	return strconv.FormatFloat(input_num, 'f', 6, 64)
 }
 
 // GetChuckJoke return a chuck norris joke
@@ -94,7 +134,10 @@ func PrintHelp(s *discordgo.Session, channel string) {
 			"**help**: Show this command\n"+
 			"**ping**: Respods with pong!\n"+
 			"**version**: Responds with bot version\n"+
-			"**chuck**: Responds with chuck norris joke")
+			"**chuck**: Responds with chuck norris joke\n"+
+			"**play**: Play a youtube link\n"+
+			"**stop**: Stop playing music\n"+
+			"**queue**: Show the queue of music")
 	if err != nil {
 		log.Println("error sending message,", err)
 	}

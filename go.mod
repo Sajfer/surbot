@@ -6,10 +6,13 @@ go 1.14
 require (
 	github.com/bwmarrin/discordgo v0.23.2
 	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/jonas747/ogg v0.0.0-20161220051205-b4f6f4cf3757 // indirect
+	github.com/json-iterator/go v1.1.12
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/onsi/gomega v1.16.0 // indirect
+	github.com/sajfer/dca v0.0.0-20210920144648-c0f39814378d
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2

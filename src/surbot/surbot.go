@@ -13,6 +13,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"gitlab.com/sajfer/surbot/src/logger"
 	"gitlab.com/sajfer/surbot/src/utils"
+	"gitlab.com/sajfer/surbot/src/youtube"
 )
 
 // Surbot contain basic information about the bot
@@ -21,6 +22,10 @@ type Surbot struct {
 	version string
 	prefix  string
 }
+
+var (
+	voiceData = Voice{}
+)
 
 // NewSurbot return an instance of surbot
 func NewSurbot(token, prefix, version string) Surbot {
@@ -49,6 +54,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		if err != nil {
 			logger.Log.Warning("could not send message,", err)
 		}
+		return
 	}
 
 	if message == "version" {
@@ -56,6 +62,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		if err != nil {
 			logger.Log.Warning("could not send message,", err)
 		}
+		return
 	}
 
 	if message == "help" {
@@ -68,31 +75,90 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		if err != nil {
 			logger.Log.Warning("could not send message,", err)
 		}
+		return
+	}
+
+	if message == "playing" {
+		voiceData.ChannelID = m.ChannelID
+		voiceData.SetSession(s)
+		voiceData.NowPlaying()
+		return
 	}
 
 	if strings.HasPrefix(message, "play") {
 		logger.Log.Debugln("Playing music")
-		song := strings.TrimPrefix(message, "play")
-		song = strings.ReplaceAll(song, " ", "")
-		logger.Log.Debugf("selected song: %s", song)
+		voiceData.ChannelID = m.ChannelID
+		voiceData.SetSession(s)
+		songUrl := strings.TrimPrefix(message, "play")
+		songUrl = strings.ReplaceAll(songUrl, " ", "")
 
-		// youtubeDl := youtube.NewYoutubeDl()
+		info, err := youtube.GetVideoInfo(songUrl)
+		if err != nil {
+			logger.Log.Warningf("could not fetch video information for %s, err= %s", songUrl, err)
+			return
+		}
+		if info.Playlist != nil {
+			voiceData.AddPlaylistToQueue(*info.Playlist)
+		} else {
+			voiceData.AddSongToQueue(*info.Video)
+		}
 
-		// youtubeDl.Options.Output.Value = "video.mp3"
-		// youtubeDl.Options.ExtractAudio.Value = true
-		// youtubeDl.Options.AudioFormat.Value = "mp3"
+		err = voiceData.Connect(m.Author.ID, m.GuildID, false, true)
+		if err != nil {
+			logger.Log.Warningf("could not join voice channel, err=%s", err)
+			return
+		}
+		if !voiceData.Playing {
+			err = voiceData.Play()
+			if err != nil {
+				logger.Log.Warningf("Could not play song, err=%s", err)
+			}
+		}
+		return
+	}
 
-		// go io.Copy(os.Stdout, youtubeDl.Stdout)
-		// go io.Copy(os.Stderr, youtubeDl.Stderr)
+	if message == "stop" {
+		voiceData.ChannelID = m.ChannelID
+		voiceData.SetSession(s)
+		voiceData.Stop()
+	}
 
-		// cmd, err := youtubeDl.Download(song)
+	if message == "queue" {
+		voiceData.ChannelID = m.ChannelID
+		voiceData.SetSession(s)
+		err := voiceData.ShowQueue()
+		if err != nil {
+			logger.Log.Warningf("could not show queue, err=%s", err)
+		}
+		return
+	}
 
-		// if err != nil {
-		// 	logger.Log.Warning("could not download song", err)
-		// }
+	if message == "skip" {
+		voiceData.ChannelID = m.ChannelID
+		voiceData.SetSession(s)
+		err := voiceData.Skip()
+		if err != nil {
+			logger.Log.Warning("could not skip song")
+		}
+		return
+	}
 
-		// logger.Log.Debugf("Title: %s\n", youtubeDl.Info.Title)
-		// cmd.Wait()
+	if message == "disconnect" {
+		voiceData.ChannelID = m.ChannelID
+		voiceData.SetSession(s)
+		err := voiceData.Disconnect()
+		if err != nil {
+			logger.Log.Warning("could not disconnect")
+		}
+	}
+
+	if message == "clearQueue" {
+		voiceData.ChannelID = m.ChannelID
+		voiceData.SetSession(s)
+		err := voiceData.ClearQueue()
+		if err != nil {
+			logger.Log.Warning("could not clear queue")
+		}
 	}
 
 	if strings.HasPrefix(message, "roll") {
@@ -113,6 +179,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		if err != nil {
 			logger.Log.Warning("could not send message,", err)
 		}
+		return
 	}
 }
 

@@ -2,7 +2,9 @@ package main
 
 import (
 	"flag"
+	"math/rand"
 	"os"
+	"time"
 
 	"gitlab.com/sajfer/surbot/src/surbot"
 )
@@ -15,6 +17,9 @@ var (
 )
 
 func main() {
+
+	rand.Seed(time.Now().UTC().UnixNano())
+
 	flag.StringVar(&Token, "t", "", "Bot Token")
 	flag.StringVar(&Prefix, "p", "!", "Bot Prefix")
 	flag.Parse()
