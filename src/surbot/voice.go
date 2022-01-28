@@ -86,12 +86,18 @@ func (voice *Voice) Disconnect() error {
 	}
 
 	if voice.EncodingSession != nil {
-		voice.EncodingSession.Stop()
+		err := voice.EncodingSession.Stop()
+		if err != nil {
+			return err
+		}
 		voice.EncodingSession.Cleanup()
 		voice.EncodingSession = nil
 	}
 	if voice.VoiceChannel != nil {
-		voice.VoiceChannel.Disconnect()
+		err := voice.VoiceChannel.Disconnect()
+		if err != nil {
+			return err
+		}
 		voice.VoiceChannel = nil
 	}
 	return nil
@@ -105,7 +111,10 @@ func (voice *Voice) Play() error {
 
 		song := voice.Queue[0]
 		voice.Queue = voice.Queue[1:]
-		voice.Session.UpdateListeningStatus(song.Metadata.Title)
+		err := voice.Session.UpdateListeningStatus(song.Metadata.Title)
+		if err != nil {
+			return err
+		}
 		voice.CurrentSong = song
 		voice.NowPlaying()
 		msg, err := voice.playRaw(*song)
@@ -129,7 +138,10 @@ func (voice *Voice) Play() error {
 		if len(voice.Queue) > 0 {
 			return voice.Play()
 		} else {
-			voice.Session.UpdateListeningStatus("")
+			err := voice.Session.UpdateListeningStatus("")
+			if err != nil {
+				return err
+			}
 			voice.CurrentSong = nil
 			return nil
 		}
@@ -164,10 +176,15 @@ func (voice *Voice) playRaw(song Song) (error, error) {
 	voice.Playing = false
 
 	_, err = voice.StreamingSession.Finished()
-
+	if err != nil {
+		logger.Log.Warningf("error while stopping stream session, err=%s", err)
+	}
 	voice.StreamingSession = nil
 
-	voice.EncodingSession.Stop()
+	err = voice.EncodingSession.Stop()
+	if err != nil {
+		logger.Log.Warningf("Could not stop encoding session, err=%s", err)
+	}
 	voice.EncodingSession.Cleanup()
 	voice.EncodingSession = nil
 	return msg, err
@@ -231,7 +248,10 @@ func (voice *Voice) NowPlaying() {
 	} else {
 		embed.AddField("Currently not playing", "Use !play <youtube link> to queue a song")
 	}
-	voice.Session.ChannelMessageSendEmbed(voice.ChannelID, embed.MessageEmbed)
+	err, _ := voice.Session.ChannelMessageSendEmbed(voice.ChannelID, embed.MessageEmbed)
+	if err != nil {
+		logger.Log.Warningf("Failed to send message, err=%v", err)
+	}
 }
 
 func (voice *Voice) Skip() error {
@@ -274,9 +294,12 @@ func (voice *Voice) AddPlaylistToQueue(playlist youtube.Playlist) error {
 	}
 	firstVideo, err := youtube.GetVideoInfo(playlist.Entries[0].ID)
 	if err != nil {
-		return nil
+		return err
 	}
-	voice.addItemToQueue(*firstVideo.Video)
+	err = voice.addItemToQueue(*firstVideo.Video)
+	if err != nil {
+		return err
+	}
 	go voice.addPlaylistItemsToQueue(playlist)
 	return nil
 }
@@ -287,6 +310,9 @@ func (voice *Voice) addPlaylistItemsToQueue(playlist youtube.Playlist) {
 		if err != nil {
 			continue
 		}
-		voice.addItemToQueue(*vid.Video)
+		err = voice.addItemToQueue(*vid.Video)
+		if err != nil {
+			logger.Log.Warningf("Could not add song to queue, err=%s", err)
+		}
 	}
 }

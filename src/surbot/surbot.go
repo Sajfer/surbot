@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"gitlab.com/sajfer/surbot/src/logger"
@@ -98,9 +97,15 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 			return
 		}
 		if info.Playlist != nil {
-			voiceData.AddPlaylistToQueue(*info.Playlist)
+			err := voiceData.AddPlaylistToQueue(*info.Playlist)
+			if err != nil {
+				logger.Log.Warningf("could not add playlist to queue, err=%s", err)
+			}
 		} else {
-			voiceData.AddSongToQueue(*info.Video)
+			err := voiceData.AddSongToQueue(*info.Video)
+			if err != nil {
+				logger.Log.Warningf("could not add song to queue, err=%s", err)
+			}
 		}
 
 		err = voiceData.Connect(m.Author.ID, m.GuildID, false, true)
@@ -111,7 +116,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		if !voiceData.Playing {
 			err = voiceData.Play()
 			if err != nil {
-				logger.Log.Warningf("Could not play song, err=%s", err)
+				logger.Log.Warningf("could not play song, err=%s", err)
 			}
 		}
 		return
@@ -120,7 +125,10 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	if message == "stop" {
 		voiceData.ChannelID = m.ChannelID
 		voiceData.SetSession(s)
-		voiceData.Stop()
+		err := voiceData.Stop()
+		if err != nil {
+			logger.Log.Warningf("could not stop plaing song, err=%s", err)
+		}
 	}
 
 	if message == "queue" {
@@ -180,81 +188,6 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 			logger.Log.Warning("could not send message,", err)
 		}
 		return
-	}
-}
-
-func (surbot Surbot) changedChannel(s *discordgo.Session, m *discordgo.VoiceStateUpdate) {
-
-	user, err := s.User(m.UserID)
-	if err != nil {
-		logger.Log.Warningf("could not find user %s, err=%s", m.UserID, err)
-		return
-	}
-
-	server, err := s.Guild(m.VoiceState.GuildID)
-	if err != nil {
-		logger.Log.Warningf("could not find server %s, err=%s", m.VoiceState.GuildID, err)
-		return
-	}
-
-	logChannel := utils.GetChannel(server, "log")
-	if logChannel == nil {
-		logger.Log.Warning("could not find log channel")
-		return
-	}
-
-	avatar := user.AvatarURL("")
-
-	channel, err := s.Channel(m.VoiceState.ChannelID)
-
-	if err != nil {
-		embed := &discordgo.MessageEmbed{
-			Author: &discordgo.MessageEmbedAuthor{
-				Name:    user.Username,
-				IconURL: avatar,
-			},
-			Color:     0xf08080,                        // Red
-			Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
-			Title:     "Disconnected",
-		}
-		_, err = s.ChannelMessageSendEmbed(logChannel.ID, embed)
-		if err != nil {
-			logger.Log.Warning("could not send message,", err)
-		}
-		return
-	}
-
-	permissions := channel.PermissionOverwrites
-
-	allowedToSee := true
-
-	for _, permission := range permissions {
-		role, err := utils.GetRole(s.State, m.VoiceState.GuildID, permission.ID)
-		if err != nil {
-			logger.Log.Warning("could not get role name")
-		}
-		if role == "@everyone" {
-			if permission.Deny&0x00000400 > 0 { // Check if everyone is allowed to see channel
-				allowedToSee = false
-			}
-		}
-	}
-
-	if allowedToSee {
-		embed := &discordgo.MessageEmbed{
-			Author: &discordgo.MessageEmbedAuthor{
-				Name:    user.Username,
-				IconURL: avatar,
-			},
-			Color:     0x00ff00,                        // Green
-			Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
-			Title:     "Moved to \"" + channel.Name + "\"",
-		}
-
-		_, err := s.ChannelMessageSendEmbed(logChannel.ID, embed)
-		if err != nil {
-			logger.Log.Warning("could not send message,", err)
-		}
 	}
 }
 
