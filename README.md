@@ -1,0 +1,1 @@
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Sajfer/surbot/master.svg?badge_token=pBUtTsCGQJmXgygfFqWFxA)](https://results.pre-commit.ci/latest/github/Sajfer/surbot/master?badge_token=pBUtTsCGQJmXgygfFqWFxA)
