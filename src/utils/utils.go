@@ -60,10 +60,7 @@ func SecondsToHuman(input float64) (result string) {
 
 func CheckFileExists(filename string) bool {
 	_, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return true
+	return !os.IsNotExist(err)
 }
 
 func FloatToString(input_num float64) string {
