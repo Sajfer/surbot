@@ -160,7 +160,7 @@ func (voice *Voice) playRaw(song Song) (error, error) {
 
 	options := dca.StdEncodeOptions
 	options.RawOutput = true
-	options.Bitrate = 96
+	options.Bitrate = 384
 	options.Application = "lowdelay"
 	options.Volume = 10
 
