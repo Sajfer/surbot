@@ -12,3 +12,7 @@ repos:
     rev: v1.44.0
     hooks:
     -   id: golangci-lint
+-   repo: https://github.com/hadolint/hadolint
+    rev: v2.8.0
+    hooks:
+    -   id: hadolint-docker
