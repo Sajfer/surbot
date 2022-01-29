@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/sajfer/dca"
@@ -34,7 +35,12 @@ type Voice struct {
 	Queue            []*Song
 	ChannelID        string
 	done             chan error
+	timeout          time.Timer
 }
+
+var (
+	timeout = 5
+)
 
 func (voice *Voice) SetTextChannel(channel string) {
 	voice.ChannelID = channel
@@ -66,6 +72,9 @@ func (voice *Voice) Connect(userId, guildId string, mute, deaf bool) error {
 		return err
 	}
 	voice.VoiceChannel = vc
+
+	voice.initTimer(time.Duration(timeout) * time.Minute)
+
 	return nil
 }
 
@@ -103,6 +112,21 @@ func (voice *Voice) Disconnect() error {
 	return nil
 }
 
+func (voice *Voice) initTimer(timeout time.Duration) {
+	voice.timeout = *time.AfterFunc(time.Duration(timeout),
+		func() {
+			logger.Log.Debug("Idle timeout, leaving channel")
+			err := voice.Disconnect()
+			if err != nil {
+				logger.Log.Warningf("Could not disconnect from voice channel, err=%v", err)
+			}
+		})
+}
+
+func (voice *Voice) resetTimer(timeout time.Duration) {
+	voice.timeout.Reset(timeout)
+}
+
 func (voice *Voice) Play() error {
 	logger.Log.Debug("voice.Play")
 
@@ -115,6 +139,9 @@ func (voice *Voice) Play() error {
 		if err != nil {
 			return err
 		}
+
+		voice.resetTimer(time.Duration(int(song.Metadata.Duration))*time.Second + time.Duration(timeout)*time.Minute)
+
 		voice.CurrentSong = song
 		voice.NowPlaying()
 		msg, err := voice.playRaw(*song)
@@ -123,6 +150,7 @@ func (voice *Voice) Play() error {
 				voice.Playing = false
 				err := voice.Session.UpdateListeningStatus("")
 				voice.CurrentSong = nil
+				voice.resetTimer(time.Duration(timeout) * time.Minute)
 				return err
 			}
 		}
@@ -133,6 +161,7 @@ func (voice *Voice) Play() error {
 				if msg != errVoiceSkippedManually {
 					_ = voice.Session.UpdateListeningStatus("")
 					voice.CurrentSong = nil
+					voice.resetTimer(time.Duration(timeout) * time.Minute)
 					return err
 				}
 			default:
@@ -199,6 +228,11 @@ func (voice *Voice) Stop() error {
 
 	voice.EncodingSession.Cleanup()
 	voice.Playing = false
+
+	if !voice.timeout.Stop() {
+		<-voice.timeout.C
+	}
+	voice.timeout.Reset(time.Duration(timeout) * time.Minute)
 
 	return nil
 }
