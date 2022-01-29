@@ -121,7 +121,9 @@ func (voice *Voice) Play() error {
 		if msg != nil {
 			if msg == errVoiceStoppedManually {
 				voice.Playing = false
-				return nil
+				err := voice.Session.UpdateListeningStatus("")
+				voice.CurrentSong = nil
+				return err
 			}
 		}
 		if err != nil {
@@ -129,6 +131,8 @@ func (voice *Voice) Play() error {
 			switch err {
 			case io.ErrUnexpectedEOF:
 				if msg != errVoiceSkippedManually {
+					_ = voice.Session.UpdateListeningStatus("")
+					voice.CurrentSong = nil
 					return err
 				}
 			default:
@@ -181,10 +185,6 @@ func (voice *Voice) playRaw(song Song) (error, error) {
 	}
 	voice.StreamingSession = nil
 
-	err = voice.EncodingSession.Stop()
-	if err != nil {
-		logger.Log.Warningf("Could not stop encoding session, err=%s", err)
-	}
 	voice.EncodingSession.Cleanup()
 	voice.EncodingSession = nil
 	return msg, err
@@ -215,6 +215,10 @@ func (voice *Voice) ShowQueue() error {
 		embed.AddField("No songs queued", "Use !play <youtube link> to queue a song")
 	}
 	for i, song := range voice.Queue {
+		if i > 18 {
+			songList = songList + "-- Only showing the first 20 songs --\n"
+			break
+		}
 		songList = songList + fmt.Sprintf("%d. %s\n", i+index, song.Metadata.Title)
 	}
 	if songList != "" {
@@ -248,9 +252,9 @@ func (voice *Voice) NowPlaying() {
 	} else {
 		embed.AddField("Currently not playing", "Use !play <youtube link> to queue a song")
 	}
-	err, _ := voice.Session.ChannelMessageSendEmbed(voice.ChannelID, embed.MessageEmbed)
+	_, err := voice.Session.ChannelMessageSendEmbed(voice.ChannelID, embed.MessageEmbed)
 	if err != nil {
-		logger.Log.Warningf("Failed to send message, err=%v", err)
+		logger.Log.Warningf("failed to send message, err=%s", err.Error())
 	}
 }
 
