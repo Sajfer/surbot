@@ -23,7 +23,7 @@ type Surbot struct {
 }
 
 var (
-	voiceData = Voice{}
+	voiceData = NewVoice()
 )
 
 // NewSurbot return an instance of surbot
@@ -108,12 +108,12 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 			}
 		}
 
-		err = voiceData.Connect(m.Author.ID, m.GuildID, false, true)
-		if err != nil {
-			logger.Log.Warningf("could not join voice channel, err=%s", err)
-			return
-		}
 		if !voiceData.Playing {
+			err = voiceData.Connect(m.Author.ID, m.GuildID, false, true)
+			if err != nil {
+				logger.Log.Warningf("could not join voice channel, err=%s", err)
+				return
+			}
 			err = voiceData.Play()
 			if err != nil {
 				logger.Log.Warningf("could not play song, err=%s", err)
