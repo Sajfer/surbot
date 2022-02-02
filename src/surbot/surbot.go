@@ -26,8 +26,11 @@ var (
 	voiceData = NewVoice()
 )
 
+var yt *youtube.Youtube
+
 // NewSurbot return an instance of surbot
-func NewSurbot(token, prefix, version string) Surbot {
+func NewSurbot(token, youtubeAPI, prefix, version string) Surbot {
+	yt = youtube.NewYoutube(youtubeAPI)
 	return Surbot{token: token, prefix: prefix, version: version}
 }
 
@@ -102,8 +105,6 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		logger.Log.Debugln("Search for song")
 		voiceData.ChannelID = m.ChannelID
 		voiceData.SetSession(s)
-
-		yt := youtube.NewYoutube("AIzaSyCuYwDddPGl5B6oYLEPAG3agEn-_B74eKQ")
 
 		searchString := strings.TrimPrefix(message, "search")
 		searchString = strings.ReplaceAll(searchString, " ", "")

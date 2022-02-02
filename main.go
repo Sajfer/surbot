@@ -11,9 +11,10 @@ import (
 
 // Variables used for command line parameters
 var (
-	Token   string
-	Version string
-	Prefix  string
+	Token      string
+	Version    string
+	Prefix     string
+	YoutubeAPI string
 )
 
 func main() {
@@ -21,6 +22,7 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	flag.StringVar(&Token, "t", "", "Bot Token")
+	flag.StringVar(&YoutubeAPI, "y", "", "Youtube API token")
 	flag.StringVar(&Prefix, "p", "!", "Bot Prefix")
 	flag.Parse()
 
@@ -30,6 +32,10 @@ func main() {
 		Token = os.Getenv("TOKEN")
 	}
 
-	surbot := surbot.NewSurbot(Token, Prefix, Version)
+	if YoutubeAPI == "" {
+		YoutubeAPI = os.Getenv("YOUTUBE_API")
+	}
+
+	surbot := surbot.NewSurbot(Token, YoutubeAPI, Prefix, Version)
 	surbot.StartServer()
 }
