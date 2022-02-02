@@ -8,7 +8,10 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -23,6 +26,10 @@ type inner struct {
 	Joke       string   `json:"joke"`
 	Categories []string `json:"categories"`
 }
+
+var (
+	durationRegex = `P(?P<years>\d+Y)?(?P<months>\d+M)?(?P<days>\d+D)?T?(?P<hours>\d+H)?(?P<minutes>\d+M)?(?P<seconds>\d+S)?`
+)
 
 func RandomString(n int) string {
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -56,6 +63,55 @@ func SecondsToHuman(input float64) (result string) {
 	}
 
 	return
+}
+
+func FormatVideoTitle(videoTitle string) string {
+	newTitle := strings.TrimSpace(videoTitle)
+
+	stringReplacer := strings.NewReplacer("/", "_", "-", "_", ",", "_", " ", "", "'", "")
+
+	newTitle = stringReplacer.Replace(newTitle)
+	//videoFileFullPath := path.Join(BASESONGPATH, newTitle)
+
+	return newTitle
+}
+
+func ParseISO8601(duration string) string {
+	r, err := regexp.Compile(durationRegex)
+	if err != nil {
+		log.Println(err)
+		return ""
+	}
+
+	matches := r.FindStringSubmatch(duration)
+
+	years := parseInt64(matches[1])
+	months := parseInt64(matches[2])
+	days := parseInt64(matches[3])
+	hours := parseInt64(matches[4])
+	minutes := parseInt64(matches[5])
+	seconds := parseInt64(matches[6])
+
+	hour := int64(time.Hour)
+	minute := int64(time.Minute)
+	second := int64(time.Second)
+
+	return time.Duration(years*24*365*hour +
+		months*30*24*hour + days*24*hour +
+		hours*hour + minutes*minute + seconds*second).String()
+}
+
+func parseInt64(value string) int64 {
+	if len(value) == 0 {
+		return 0
+	}
+
+	parsed, err := strconv.Atoi(value[:len(value)-1])
+	if err != nil {
+		return 0
+	}
+
+	return int64(parsed)
 }
 
 func CheckFileExists(filename string) bool {

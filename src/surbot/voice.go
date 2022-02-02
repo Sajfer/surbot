@@ -113,6 +113,41 @@ func (voice *Voice) Disconnect() error {
 	return nil
 }
 
+func (voice *Voice) PlayVideo(url string, m *discordgo.MessageCreate) error {
+	info, err := youtube.GetVideoInfo(url)
+	if err != nil {
+		logger.Log.Warningf("could not fetch video information for %s, err= %s", url, err)
+		return err
+	}
+	if info.Playlist != nil {
+		err := voice.AddPlaylistToQueue(*info.Playlist)
+		if err != nil {
+			logger.Log.Warningf("could not add playlist to queue, err=%s", err)
+			return err
+		}
+	} else {
+		err := voice.AddSongToQueue(*info.Video)
+		if err != nil {
+			logger.Log.Warningf("could not add song to queue, err=%s", err)
+			return err
+		}
+	}
+
+	if !voice.Playing {
+		err = voice.Connect(m.Author.ID, m.GuildID, false, true)
+		if err != nil {
+			logger.Log.Warningf("could not join voice channel, err=%s", err)
+			return err
+		}
+		err = voice.Play()
+		if err != nil {
+			logger.Log.Warningf("could not play song, err=%s", err)
+			return err
+		}
+	}
+	return nil
+}
+
 func (voice *Voice) Play() error {
 	logger.Log.Debug("voice.Play")
 

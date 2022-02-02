@@ -91,33 +91,28 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		songUrl := strings.TrimPrefix(message, "play")
 		songUrl = strings.ReplaceAll(songUrl, " ", "")
 
-		info, err := youtube.GetVideoInfo(songUrl)
+		err := voiceData.PlayVideo(songUrl, m)
 		if err != nil {
-			logger.Log.Warningf("could not fetch video information for %s, err= %s", songUrl, err)
-			return
+			logger.Log.Warningf("could not play song, err=%s", err)
 		}
-		if info.Playlist != nil {
-			err := voiceData.AddPlaylistToQueue(*info.Playlist)
-			if err != nil {
-				logger.Log.Warningf("could not add playlist to queue, err=%s", err)
-			}
-		} else {
-			err := voiceData.AddSongToQueue(*info.Video)
-			if err != nil {
-				logger.Log.Warningf("could not add song to queue, err=%s", err)
-			}
-		}
+		return
+	}
 
-		if !voiceData.Playing {
-			err = voiceData.Connect(m.Author.ID, m.GuildID, false, true)
-			if err != nil {
-				logger.Log.Warningf("could not join voice channel, err=%s", err)
-				return
-			}
-			err = voiceData.Play()
-			if err != nil {
-				logger.Log.Warningf("could not play song, err=%s", err)
-			}
+	if strings.HasPrefix(message, "search") {
+		logger.Log.Debugln("Search for song")
+		voiceData.ChannelID = m.ChannelID
+		voiceData.SetSession(s)
+
+		yt := youtube.NewYoutube("AIzaSyCuYwDddPGl5B6oYLEPAG3agEn-_B74eKQ")
+
+		searchString := strings.TrimPrefix(message, "search")
+		searchString = strings.ReplaceAll(searchString, " ", "")
+
+		songUrl := yt.SearchVideo(searchString).Path
+
+		err := voiceData.PlayVideo(songUrl, m)
+		if err != nil {
+			logger.Log.Warningf("could not search for song, err=%s", err)
 		}
 		return
 	}
@@ -127,7 +122,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		voiceData.SetSession(s)
 		err := voiceData.Stop()
 		if err != nil {
-			logger.Log.Warningf("could not stop plaing song, err=%s", err)
+			logger.Log.Warningf("could not stop playing song, err=%s", err)
 		}
 	}
 
