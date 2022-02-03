@@ -11,10 +11,12 @@ import (
 
 // Variables used for command line parameters
 var (
-	Token      string
-	Version    string
-	Prefix     string
-	YoutubeAPI string
+	Token               string
+	Version             string
+	Prefix              string
+	YoutubeAPI          string
+	spotifyClientID     string
+	spotifyClientSecret string
 )
 
 func main() {
@@ -23,6 +25,8 @@ func main() {
 
 	flag.StringVar(&Token, "t", "", "Bot Token")
 	flag.StringVar(&YoutubeAPI, "y", "", "Youtube API token")
+	flag.StringVar(&spotifyClientID, "cid", "", "Spotify clientID")
+	flag.StringVar(&spotifyClientSecret, "cs", "", "Spotify clientSecretID")
 	flag.StringVar(&Prefix, "p", "!", "Bot Prefix")
 	flag.Parse()
 
@@ -36,6 +40,14 @@ func main() {
 		YoutubeAPI = os.Getenv("YOUTUBE_API")
 	}
 
-	surbot := surbot.NewSurbot(Token, YoutubeAPI, Prefix, Version)
+	if spotifyClientID == "" {
+		spotifyClientID = os.Getenv("SPOTIFY_CLIENTID")
+	}
+
+	if spotifyClientSecret == "" {
+		spotifyClientSecret = os.Getenv("SPOTIFY_CLIENTSECRET")
+	}
+
+	surbot := surbot.NewSurbot(Token, YoutubeAPI, spotifyClientID, spotifyClientSecret, Prefix, Version)
 	surbot.StartServer()
 }

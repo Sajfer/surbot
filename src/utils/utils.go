@@ -28,7 +28,12 @@ type inner struct {
 }
 
 var (
-	durationRegex = `P(?P<years>\d+Y)?(?P<months>\d+M)?(?P<days>\d+D)?T?(?P<hours>\d+H)?(?P<minutes>\d+M)?(?P<seconds>\d+S)?`
+	durationRegex            = `P(?P<years>\d+Y)?(?P<months>\d+M)?(?P<days>\d+D)?T?(?P<hours>\d+H)?(?P<minutes>\d+M)?(?P<seconds>\d+S)?`
+	ytUrlRegex               = `^(?:https?\:\/\/)?(?:www\.)?(?:(?:youtube\.com\/watch\?v=)|(?:youtu.be\/))([a-zA-Z0-9\-_]{11})+.*$|^(?:https:\/\/www.youtube.com\/playlist\?list=)([a-zA-Z0-9\-_].*).*$`
+	spotifyHttpUrlRegex      = `^(?:https?:\/\/open.spotify.com\/(?:playlist\/|album\/|track\/)([a-zA-Z0-9]+))(?:.*)`
+	spotifyHttpPlaylistRegex = `^(https:\/\/open.spotify.com\/playlist\/[[a-zA-Z0-9]{22}\?.*)$`
+	spotifyHttpAlbumRegex    = `^(https:\/\/open.spotify.com\/album\/[[a-zA-Z0-9]{22}\?.*)$`
+	spotifyHttpTrackRegex    = `^(https:\/\/open.spotify.com\/track\/[[a-zA-Z0-9]{22}\?.*)$`
 )
 
 func RandomString(n int) string {
@@ -74,6 +79,40 @@ func FormatVideoTitle(videoTitle string) string {
 	//videoFileFullPath := path.Join(BASESONGPATH, newTitle)
 
 	return newTitle
+}
+
+func IsYoutubeUrl(url string) bool {
+	re := regexp.MustCompile(ytUrlRegex)
+	return re.MatchString(url)
+}
+
+func IsSpotifyUrl(url string) bool {
+	re := regexp.MustCompile(spotifyHttpUrlRegex)
+	return re.MatchString(url)
+}
+
+func IsSpotifyTrackUrl(url string) bool {
+	re := regexp.MustCompile(spotifyHttpTrackRegex)
+	return re.MatchString(url)
+}
+
+func IsSpotifyAlbumUrl(url string) bool {
+	re := regexp.MustCompile(spotifyHttpAlbumRegex)
+	return re.MatchString(url)
+}
+
+func IsSpotifyPlaylistUrl(url string) bool {
+	re := regexp.MustCompile(spotifyHttpPlaylistRegex)
+	return re.MatchString(url)
+}
+
+func GetSpotifyID(url string) string {
+	re := regexp.MustCompile(spotifyHttpUrlRegex)
+	matches := re.FindStringSubmatch(url)
+	if matches == nil {
+		return ""
+	}
+	return matches[1]
 }
 
 func ParseISO8601(duration string) string {

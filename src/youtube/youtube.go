@@ -88,21 +88,6 @@ func (yt *Youtube) GetDurationByID(id string) string {
 	return ""
 }
 
-// Download will download either the given url or the youtubeDl.VideoUrl from youtube
-func Download(url string, path string) error {
-	logger.Log.Debug("youtube.Download")
-
-	cmd := exec.Command("youtube-dl", "-x", "--audio-format", "mp3", "-o", path, url)
-	err := cmd.Run()
-	if err != nil {
-		if e, ok := err.(*exec.ExitError); ok {
-			logger.Log.Debug(e.Stderr)
-		}
-		return err
-	}
-	return nil
-}
-
 // GetInfo gets the info of a particular video or playlist
 func GetVideoInfo(url string) (Info, error) {
 	logger.Log.Debug("youtube.GetVideoInfo")

@@ -9,6 +9,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/sajfer/dca"
 	"gitlab.com/sajfer/surbot/src/logger"
+	spotifyClient "gitlab.com/sajfer/surbot/src/spotify"
 	"gitlab.com/sajfer/surbot/src/utils"
 	"gitlab.com/sajfer/surbot/src/youtube"
 )
@@ -362,6 +363,44 @@ func (voice *Voice) AddPlaylistToQueue(playlist youtube.Playlist) error {
 		return err
 	}
 	go voice.addPlaylistItemsToQueue(playlist)
+	return nil
+}
+
+func (voice *Voice) AddSpotifyPlaylist(playlist spotifyClient.Playlist) error {
+	logger.Log.Debug("voice.AddSpotifyPlaylist")
+	embed := NewEmbed()
+	embed.AddField("Playlist added to queue", fmt.Sprintf("%s by %s", playlist.Title, playlist.Uploader))
+	_, err := voice.Session.ChannelMessageSendEmbed(voice.ChannelID, embed.MessageEmbed)
+	if err != nil {
+		return err
+	}
+
+	url := yt.SearchVideo(fmt.Sprintf("%s - %s", playlist.Songs[0].Artist, playlist.Songs[0].Name))
+	info, err := youtube.GetVideoInfo(url.Path)
+	if err != nil {
+		logger.Log.Warningf("could not fetch video information for %s, err= %s", url, err)
+	}
+	err = voice.addItemToQueue(*info.Video)
+	if err != nil {
+		logger.Log.Warningf("Could not add song to play queue, err=%v", err)
+		return err
+	}
+
+	go func() {
+		for _, song := range playlist.Songs[1:] {
+			url := yt.SearchVideo(fmt.Sprintf("%s - %s", song.Artist, song.Name))
+			info, err := youtube.GetVideoInfo(url.Path)
+			if err != nil {
+				logger.Log.Warningf("could not fetch video information for %s, err= %s", url, err)
+				continue
+			}
+			err = voice.addItemToQueue(*info.Video)
+			if err != nil {
+				logger.Log.Warningf("Could not add song to play queue, err=%v", err)
+				continue
+			}
+		}
+	}()
 	return nil
 }
 

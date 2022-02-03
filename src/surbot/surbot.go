@@ -11,6 +11,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"gitlab.com/sajfer/surbot/src/logger"
+	spotifyClient "gitlab.com/sajfer/surbot/src/spotify"
 	"gitlab.com/sajfer/surbot/src/utils"
 	"gitlab.com/sajfer/surbot/src/youtube"
 )
@@ -24,13 +25,14 @@ type Surbot struct {
 
 var (
 	voiceData = NewVoice()
+	yt        *youtube.Youtube
+	sp        *spotifyClient.Client
 )
 
-var yt *youtube.Youtube
-
 // NewSurbot return an instance of surbot
-func NewSurbot(token, youtubeAPI, prefix, version string) Surbot {
+func NewSurbot(token, youtubeAPI, clientID, clientSecret, prefix, version string) Surbot {
 	yt = youtube.NewYoutube(youtubeAPI)
+	sp = spotifyClient.NewSpotifyClient(clientID, clientSecret)
 	return Surbot{token: token, prefix: prefix, version: version}
 }
 
@@ -91,29 +93,43 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		logger.Log.Debugln("Playing music")
 		voiceData.ChannelID = m.ChannelID
 		voiceData.SetSession(s)
-		songUrl := strings.TrimPrefix(message, "play")
-		songUrl = strings.ReplaceAll(songUrl, " ", "")
+		query := strings.TrimPrefix(message, "play")
+		query = strings.ReplaceAll(query, " ", "")
 
-		err := voiceData.PlayVideo(songUrl, m)
+		var url string
+
+		if utils.IsYoutubeUrl(query) {
+			url = query
+		} else if utils.IsSpotifyUrl(query) {
+			playlist, err := sp.Search(query)
+			if err != nil {
+				logger.Log.Warningf("Could not search for song, err=%v", err)
+				return
+			}
+			err = voiceData.AddSpotifyPlaylist(*playlist)
+			if err != nil {
+				logger.Log.Warningf("Could not add songs to queue, err=%v", err)
+				return
+			}
+			if !voiceData.Playing {
+				err = voiceData.Connect(m.Author.ID, m.GuildID, false, true)
+				if err != nil {
+					logger.Log.Warningf("could not join voice channel, err=%s", err)
+					return
+				}
+				err = voiceData.Play()
+				if err != nil {
+					logger.Log.Warningf("could not play song, err=%s", err)
+					return
+				}
+			}
+			return
+		} else {
+			url = yt.SearchVideo(query).Path
+		}
+		err := voiceData.PlayVideo(url, m)
 		if err != nil {
 			logger.Log.Warningf("could not play song, err=%s", err)
-		}
-		return
-	}
-
-	if strings.HasPrefix(message, "search") {
-		logger.Log.Debugln("Search for song")
-		voiceData.ChannelID = m.ChannelID
-		voiceData.SetSession(s)
-
-		searchString := strings.TrimPrefix(message, "search")
-		searchString = strings.ReplaceAll(searchString, " ", "")
-
-		songUrl := yt.SearchVideo(searchString).Path
-
-		err := voiceData.PlayVideo(songUrl, m)
-		if err != nil {
-			logger.Log.Warningf("could not search for song, err=%s", err)
 		}
 		return
 	}
