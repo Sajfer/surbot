@@ -369,10 +369,12 @@ func (voice *Voice) AddPlaylistToQueue(playlist youtube.Playlist) error {
 func (voice *Voice) AddSpotifyPlaylist(playlist spotifyClient.Playlist) error {
 	logger.Log.Debug("voice.AddSpotifyPlaylist")
 	embed := NewEmbed()
-	embed.AddField("Playlist added to queue", fmt.Sprintf("%s by %s", playlist.Title, playlist.Uploader))
-	_, err := voice.Session.ChannelMessageSendEmbed(voice.ChannelID, embed.MessageEmbed)
-	if err != nil {
-		return err
+	if len(playlist.Songs) > 1 && playlist.Title != "" {
+		embed.AddField("Playlist added to queue", fmt.Sprintf("%s by %s", playlist.Title, playlist.Uploader))
+		_, err := voice.Session.ChannelMessageSendEmbed(voice.ChannelID, embed.MessageEmbed)
+		if err != nil {
+			return err
+		}
 	}
 
 	url := yt.SearchVideo(fmt.Sprintf("%s - %s", playlist.Songs[0].Artist, playlist.Songs[0].Name))

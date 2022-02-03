@@ -82,7 +82,6 @@ func (c *Client) GetPlaylist(query string) (*Playlist, error) {
 		return &Playlist{}, err
 	}
 	playlist := &Playlist{Title: results.Name, Uploader: results.SimplePlaylist.Owner.DisplayName}
-	logger.Log.Info(results.SimplePlaylist.Name)
 	for _, item := range results.Tracks.Tracks {
 		playlist.Songs = append(playlist.Songs, Song{Name: item.Track.Name, Artist: item.Track.Artists[0].Name})
 	}
@@ -92,14 +91,14 @@ func (c *Client) GetPlaylist(query string) (*Playlist, error) {
 func (c *Client) GetAlbum(query string) (*Playlist, error) {
 	logger.Log.Debug("spotify.GetAlbum")
 	ctx := context.Background()
-	results, err := c.client.GetPlaylist(ctx, spotify.ID(query), spotify.Limit(1))
+	results, err := c.client.GetAlbum(ctx, spotify.ID(query), spotify.Limit(1))
 	if err != nil {
 		logger.Log.Warningf("Could not search for spotify track, err=%v", err)
 		return &Playlist{}, err
 	}
-	//playlist := &Playlist{}
-	logger.Log.Info(results.SimplePlaylist.Tracks)
-	// playlist.Songs = append(playlist.Songs, Song{Name: song.})
-	return &Playlist{}, nil
-	//return &Song{Name: results.SimpleTrack.Name, Artists: results.SimpleTrack.Artists[0].Name}, nil
+	playlist := &Playlist{}
+	for _, item := range results.Tracks.Tracks {
+		playlist.Songs = append(playlist.Songs, Song{Name: item.Name, Artist: item.Artists[0].Name})
+	}
+	return playlist, nil
 }
