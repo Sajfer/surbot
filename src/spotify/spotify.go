@@ -3,16 +3,20 @@ package spotifyClient
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/zmb3/spotify/v2"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
 	"gitlab.com/sajfer/surbot/src/logger"
 	"gitlab.com/sajfer/surbot/src/utils"
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
 )
 
 type Client struct {
 	client *spotify.Client
+	token  *oauth2.Token
+	config *clientcredentials.Config
 }
 
 type Song struct {
@@ -28,12 +32,19 @@ type Playlist struct {
 
 func NewSpotifyClient(clientID, clientSecret string) *Client {
 
-	ctx := context.Background()
 	config := &clientcredentials.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		TokenURL:     spotifyauth.TokenURL,
 	}
+
+	client, token := newClient(config)
+
+	return &Client{client: client, token: token, config: config}
+}
+
+func newClient(config *clientcredentials.Config) (*spotify.Client, *oauth2.Token) {
+	ctx := context.Background()
 	token, err := config.Token(ctx)
 	if err != nil {
 		log.Fatalf("couldn't get token: %v", err)
@@ -41,9 +52,15 @@ func NewSpotifyClient(clientID, clientSecret string) *Client {
 
 	httpClient := spotifyauth.New().Client(ctx, token)
 	client := spotify.New(httpClient)
-	// search for playlists and albums containing "holiday"
+	return client, token
+}
 
-	return &Client{client: client}
+func (c *Client) checkToken() {
+	if c.token.Expiry.Before(time.Now()) {
+		logger.Log.Info("Token have expired, generating new token")
+		c.client, c.token = newClient(c.config)
+	}
+
 }
 
 func (c *Client) Search(url string) (*Playlist, error) {
@@ -64,18 +81,20 @@ func (c *Client) Search(url string) (*Playlist, error) {
 func (c *Client) GetTrack(query string) (*Playlist, error) {
 	logger.Log.Debug("spotify.GetTrack")
 	ctx := context.Background()
+	c.checkToken()
 	results, err := c.client.GetTrack(ctx, spotify.ID(query), spotify.Limit(1))
 	if err != nil {
 		logger.Log.Warningf("Could not search for spotify track, err=%v", err)
 		return &Playlist{}, err
 	}
 	logger.Log.Debugf("%s", results.SimpleTrack.Name)
-	return &Playlist{Songs: []Song{Song{Name: results.SimpleTrack.Name, Artist: results.SimpleTrack.Artists[0].Name}}}, nil
+	return &Playlist{Songs: []Song{{Name: results.SimpleTrack.Name, Artist: results.SimpleTrack.Artists[0].Name}}}, nil
 }
 
 func (c *Client) GetPlaylist(query string) (*Playlist, error) {
 	logger.Log.Debug("spotify.GetPlaylist")
 	ctx := context.Background()
+	c.checkToken()
 	results, err := c.client.GetPlaylist(ctx, spotify.ID(query), spotify.Limit(1))
 	if err != nil {
 		logger.Log.Warningf("Could not search for spotify track, err=%v", err)
@@ -91,6 +110,7 @@ func (c *Client) GetPlaylist(query string) (*Playlist, error) {
 func (c *Client) GetAlbum(query string) (*Playlist, error) {
 	logger.Log.Debug("spotify.GetAlbum")
 	ctx := context.Background()
+	c.checkToken()
 	results, err := c.client.GetAlbum(ctx, spotify.ID(query), spotify.Limit(1))
 	if err != nil {
 		logger.Log.Warningf("Could not search for spotify track, err=%v", err)
