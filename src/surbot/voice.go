@@ -19,19 +19,18 @@ type Voice struct {
 	StreamingSession *dca.StreamingSession
 	Session          *discordgo.Session
 	Playing          bool
-	CurrentSong      *music.Song
-	Queue            []music.Song
 	ChannelID        string
 	done             chan error
 	timer            *Timer
+	music            *music.Music
 }
 
 var (
 	timeout = 5
 )
 
-func NewVoice() *Voice {
-	return &Voice{timer: &Timer{stop: make(chan bool), running: false}}
+func NewVoice(music *music.Music) *Voice {
+	return &Voice{timer: &Timer{stop: make(chan bool), running: false}, music: music}
 }
 
 func (voice *Voice) SetTextChannel(channel string) {
@@ -101,10 +100,8 @@ func (voice *Voice) Disconnect() error {
 	return nil
 }
 
-func (voice *Voice) PlayVideo(playlist *music.Playlist, m *discordgo.MessageCreate) error {
+func (voice *Voice) Start(m *discordgo.MessageCreate) error {
 	logger.Log.Debug("voice.PlayVideo")
-
-	voice.Queue = append(voice.Queue, playlist.Songs...)
 
 	if !voice.Playing {
 		err := voice.Connect(m.Author.ID, m.GuildID, false, true)
@@ -112,7 +109,7 @@ func (voice *Voice) PlayVideo(playlist *music.Playlist, m *discordgo.MessageCrea
 			logger.Log.Warningf("could not join voice channel, err=%s", err)
 			return err
 		}
-		err = voice.Play()
+		err = voice.play()
 		if err != nil {
 			logger.Log.Warningf("could not play song, err=%s", err)
 			return err
@@ -121,14 +118,17 @@ func (voice *Voice) PlayVideo(playlist *music.Playlist, m *discordgo.MessageCrea
 	return nil
 }
 
-func (voice *Voice) Play() error {
+func (voice *Voice) play() error {
 	logger.Log.Debug("voice.Play")
 
 	if !voice.Playing {
 		voice.Playing = true
 
-		song := voice.Queue[0]
-		voice.Queue = voice.Queue[1:]
+		if len(voice.music.Queue) == 0 {
+			return fmt.Errorf("queue is empty")
+		}
+		song := voice.music.Queue[0]
+		voice.music.Queue = voice.music.Queue[1:]
 		err := voice.Session.UpdateListeningStatus(song.Title)
 		if err != nil {
 			return err
@@ -139,14 +139,14 @@ func (voice *Voice) Play() error {
 		}
 		// voice.resetTimer(time.Duration(int(song.Metadata.Duration))*time.Second + time.Duration(timeout)*time.Minute)
 
-		voice.CurrentSong = &song
+		voice.music.CurrentSong = song
 		voice.NowPlaying()
-		msg, err := voice.playRaw(song)
+		msg, err := voice.playRaw(*song)
 		if msg != nil {
 			if msg == errVoiceStoppedManually {
 				voice.Playing = false
 				err := voice.Session.UpdateListeningStatus("")
-				voice.CurrentSong = nil
+				voice.music.CurrentSong = nil
 				go voice.timer.initTimer(time.Duration(timeout)*time.Minute, *voice)
 				return err
 			}
@@ -157,7 +157,7 @@ func (voice *Voice) Play() error {
 			case io.ErrUnexpectedEOF:
 				if msg != errVoiceSkippedManually {
 					_ = voice.Session.UpdateListeningStatus("")
-					voice.CurrentSong = nil
+					voice.music.CurrentSong = nil
 					go voice.timer.initTimer(time.Duration(timeout)*time.Minute, *voice)
 					return err
 				}
@@ -165,14 +165,14 @@ func (voice *Voice) Play() error {
 				return err
 			}
 		}
-		if len(voice.Queue) > 0 {
-			return voice.Play()
+		if len(voice.music.Queue) > 0 {
+			return voice.play()
 		} else {
 			err := voice.Session.UpdateListeningStatus("")
 			if err != nil {
 				return err
 			}
-			voice.CurrentSong = nil
+			voice.music.CurrentSong = nil
 			go voice.timer.initTimer(time.Duration(timeout)*time.Minute, *voice)
 			return nil
 		}
@@ -238,13 +238,13 @@ func (voice *Voice) ShowQueue() error {
 	embed.SetTitle("Queue")
 	songList := ""
 	var index = 1
-	if voice.CurrentSong != nil {
-		songList = songList + fmt.Sprintf("%d. %s\n", index, voice.CurrentSong.Title)
+	if voice.music.CurrentSong != nil {
+		songList = songList + fmt.Sprintf("%d. %s\n", index, voice.music.CurrentSong.Title)
 		index = index + 1
 	} else {
 		embed.AddField("No songs queued", "Use !play <youtube link> to queue a song")
 	}
-	for i, song := range voice.Queue {
+	for i, song := range voice.music.Queue {
 		if i > 18 {
 			songList = songList + "-- Only showing the first 20 songs --\n"
 			break
@@ -262,7 +262,7 @@ func (voice *Voice) ShowQueue() error {
 }
 
 func (voice *Voice) ClearQueue() error {
-	voice.Queue = nil
+	voice.music.Queue = nil
 	embed := NewEmbed()
 	embed.SetTitle("Queue")
 	embed.AddField("Queue have been cleared", "Use !play <youtube link> to queue a song")
@@ -275,10 +275,10 @@ func (voice *Voice) ClearQueue() error {
 
 func (voice *Voice) NowPlaying() {
 	embed := NewEmbed()
-	if voice.CurrentSong != nil {
-		embed.AddField("Now playing", voice.CurrentSong.Title)
-		embed.AddField("Duration", utils.SecondsToHuman(voice.CurrentSong.Duration))
-		embed.SetThumbnail(voice.CurrentSong.Thumbnail)
+	if voice.music.CurrentSong != nil {
+		embed.AddField("Now playing", voice.music.CurrentSong.Title)
+		embed.AddField("Duration", utils.SecondsToHuman(voice.music.CurrentSong.Duration))
+		embed.SetThumbnail(voice.music.CurrentSong.Thumbnail)
 	} else {
 		embed.AddField("Currently not playing", "Use !play <youtube link> to queue a song")
 	}

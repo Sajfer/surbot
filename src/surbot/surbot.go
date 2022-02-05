@@ -12,9 +12,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"gitlab.com/sajfer/surbot/src/logger"
 	"gitlab.com/sajfer/surbot/src/music"
-	spotifyClient "gitlab.com/sajfer/surbot/src/spotify"
 	"gitlab.com/sajfer/surbot/src/utils"
-	"gitlab.com/sajfer/surbot/src/youtube"
 )
 
 // Surbot contain basic information about the bot
@@ -25,15 +23,15 @@ type Surbot struct {
 }
 
 var (
-	voiceData    = NewVoice()
-	musicClients *music.Clients
+	voiceData    *Voice
+	musicClients *music.Music
 )
 
 // NewSurbot return an instance of surbot
 func NewSurbot(token, youtubeAPI, clientID, clientSecret, prefix, version string) Surbot {
-	musicClients = &music.Clients{}
-	musicClients.Youtube = youtube.NewYoutube(youtubeAPI)
-	musicClients.Spotify = spotifyClient.NewSpotifyClient(clientID, clientSecret)
+	logger.Log.Debug("NewSurbot")
+	musicClients = music.NewMusic(youtubeAPI, clientID, clientSecret)
+	voiceData = NewVoice(musicClients)
 	return Surbot{token: token, prefix: prefix, version: version}
 }
 
@@ -97,12 +95,12 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		query := strings.TrimPrefix(message, "play")
 		query = strings.ReplaceAll(query, " ", "")
 
-		playlist, err := musicClients.FetchSong(query)
+		err := musicClients.FetchSong(query)
 		if err != nil {
 			logger.Log.Warningf("could not fetch song information, err=%v", err)
 		}
 
-		err = voiceData.PlayVideo(playlist, m)
+		err = voiceData.Start(m)
 		if err != nil {
 			logger.Log.Warningf("could not play song, err=%s", err)
 		}
