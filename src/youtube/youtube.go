@@ -67,6 +67,43 @@ func (yt *Youtube) SearchVideo(query string) *SearchResult {
 	return nil
 }
 
+// func (yt *Youtube) GetSongs(url string) *Playlist {
+// 	logger.Log.Info("youtube.GetVideo")
+
+// 	if utils.IsYoutubeTrackUrl(url) {
+// 		info, err := GetVideoInfo(url)
+// 		if err != nil {
+// 			logger.Log.Warningf("could not fetch video information for %s, err= %s", url, err)
+// 			return &Playlist{}
+// 		}
+
+// 		return &Playlist{
+// 			Songs: []Song{
+// 				{
+// 					Title:     info.Video.Title,
+// 					Duration:  info.Video.Duration,
+// 					Thumbnail: info.Video.Thumbnail,
+// 					StreamURL: info.Video.Formats[0].URL,
+// 				},
+// 			},
+// 		}
+// 	} else if utils.IsYoutubePlaylistUrl(url) {
+// 		info, err := GetVideoInfo(url)
+// 		if err != nil {
+// 			logger.Log.Warningf("could not fetch video information for %s, err= %s", url, err)
+// 			return &Playlist{}
+// 		}
+// 		playlist := Playlist{Title: info.Playlist.Title, Uploader: info.Playlist.Uploader}
+
+// 		for _, entry := range info.Playlist.Entries {
+
+// 		}
+
+// 	} else {
+// 		return &Playlist{}
+// 	}
+// }
+
 func (yt *Youtube) GetDurationByID(id string) string {
 	ctx := context.Background()
 

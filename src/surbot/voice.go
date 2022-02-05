@@ -9,22 +9,9 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/sajfer/dca"
 	"gitlab.com/sajfer/surbot/src/logger"
-	spotifyClient "gitlab.com/sajfer/surbot/src/spotify"
+	"gitlab.com/sajfer/surbot/src/music"
 	"gitlab.com/sajfer/surbot/src/utils"
-	"gitlab.com/sajfer/surbot/src/youtube"
 )
-
-type Metadata struct {
-	Title     string
-	Duration  float64
-	Thumbnail string
-	ID        string
-}
-
-type Song struct {
-	Metadata  *Metadata
-	StreamURL string
-}
 
 type Voice struct {
 	VoiceChannel     *discordgo.VoiceConnection
@@ -32,8 +19,8 @@ type Voice struct {
 	StreamingSession *dca.StreamingSession
 	Session          *discordgo.Session
 	Playing          bool
-	CurrentSong      *Song
-	Queue            []*Song
+	CurrentSong      *music.Song
+	Queue            []music.Song
 	ChannelID        string
 	done             chan error
 	timer            *Timer
@@ -114,28 +101,13 @@ func (voice *Voice) Disconnect() error {
 	return nil
 }
 
-func (voice *Voice) PlayVideo(url string, m *discordgo.MessageCreate) error {
-	info, err := youtube.GetVideoInfo(url)
-	if err != nil {
-		logger.Log.Warningf("could not fetch video information for %s, err= %s", url, err)
-		return err
-	}
-	if info.Playlist != nil {
-		err := voice.AddPlaylistToQueue(*info.Playlist)
-		if err != nil {
-			logger.Log.Warningf("could not add playlist to queue, err=%s", err)
-			return err
-		}
-	} else {
-		err := voice.AddSongToQueue(*info.Video)
-		if err != nil {
-			logger.Log.Warningf("could not add song to queue, err=%s", err)
-			return err
-		}
-	}
+func (voice *Voice) PlayVideo(playlist *music.Playlist, m *discordgo.MessageCreate) error {
+	logger.Log.Debug("voice.PlayVideo")
+
+	voice.Queue = append(voice.Queue, playlist.Songs...)
 
 	if !voice.Playing {
-		err = voice.Connect(m.Author.ID, m.GuildID, false, true)
+		err := voice.Connect(m.Author.ID, m.GuildID, false, true)
 		if err != nil {
 			logger.Log.Warningf("could not join voice channel, err=%s", err)
 			return err
@@ -157,7 +129,7 @@ func (voice *Voice) Play() error {
 
 		song := voice.Queue[0]
 		voice.Queue = voice.Queue[1:]
-		err := voice.Session.UpdateListeningStatus(song.Metadata.Title)
+		err := voice.Session.UpdateListeningStatus(song.Title)
 		if err != nil {
 			return err
 		}
@@ -167,9 +139,9 @@ func (voice *Voice) Play() error {
 		}
 		// voice.resetTimer(time.Duration(int(song.Metadata.Duration))*time.Second + time.Duration(timeout)*time.Minute)
 
-		voice.CurrentSong = song
+		voice.CurrentSong = &song
 		voice.NowPlaying()
-		msg, err := voice.playRaw(*song)
+		msg, err := voice.playRaw(song)
 		if msg != nil {
 			if msg == errVoiceStoppedManually {
 				voice.Playing = false
@@ -209,7 +181,7 @@ func (voice *Voice) Play() error {
 	return nil
 }
 
-func (voice *Voice) playRaw(song Song) (error, error) {
+func (voice *Voice) playRaw(song music.Song) (error, error) {
 	logger.Log.Debug("voice.PlayRaw")
 	var err error
 
@@ -267,7 +239,7 @@ func (voice *Voice) ShowQueue() error {
 	songList := ""
 	var index = 1
 	if voice.CurrentSong != nil {
-		songList = songList + fmt.Sprintf("%d. %s\n", index, voice.CurrentSong.Metadata.Title)
+		songList = songList + fmt.Sprintf("%d. %s\n", index, voice.CurrentSong.Title)
 		index = index + 1
 	} else {
 		embed.AddField("No songs queued", "Use !play <youtube link> to queue a song")
@@ -277,7 +249,7 @@ func (voice *Voice) ShowQueue() error {
 			songList = songList + "-- Only showing the first 20 songs --\n"
 			break
 		}
-		songList = songList + fmt.Sprintf("%d. %s\n", i+index, song.Metadata.Title)
+		songList = songList + fmt.Sprintf("%d. %s\n", i+index, song.Title)
 	}
 	if songList != "" {
 		embed.AddField("---", songList)
@@ -304,9 +276,9 @@ func (voice *Voice) ClearQueue() error {
 func (voice *Voice) NowPlaying() {
 	embed := NewEmbed()
 	if voice.CurrentSong != nil {
-		embed.AddField("Now playing", voice.CurrentSong.Metadata.Title)
-		embed.AddField("Duration", utils.SecondsToHuman(voice.CurrentSong.Metadata.Duration))
-		embed.SetThumbnail(voice.CurrentSong.Metadata.Thumbnail)
+		embed.AddField("Now playing", voice.CurrentSong.Title)
+		embed.AddField("Duration", utils.SecondsToHuman(voice.CurrentSong.Duration))
+		embed.SetThumbnail(voice.CurrentSong.Thumbnail)
 	} else {
 		embed.AddField("Currently not playing", "Use !play <youtube link> to queue a song")
 	}
@@ -324,97 +296,4 @@ func (voice *Voice) Skip() error {
 	}
 
 	return nil
-}
-
-func (voice *Voice) AddSongToQueue(video youtube.Video) error {
-	logger.Log.Debug("voice.AddSongToQueue")
-
-	err := voice.addItemToQueue(video)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (voice *Voice) addItemToQueue(video youtube.Video) error {
-	logger.Log.Debug("voice.addItemToQueue")
-	metadata := Metadata{Title: video.Title, Duration: video.Duration, Thumbnail: video.Thumbnail, ID: video.ID}
-	song := Song{Metadata: &metadata, StreamURL: video.Formats[0].URL}
-	voice.Queue = append(voice.Queue, &song)
-	return nil
-}
-
-func (voice *Voice) AddPlaylistToQueue(playlist youtube.Playlist) error {
-	logger.Log.Debug("voice.AddPlaylistToQueue")
-
-	embed := NewEmbed()
-	embed.AddField("Playlist added to queue", fmt.Sprintf("%s by %s", playlist.Title, playlist.Uploader))
-	_, err := voice.Session.ChannelMessageSendEmbed(voice.ChannelID, embed.MessageEmbed)
-	if err != nil {
-		return err
-	}
-	firstVideo, err := youtube.GetVideoInfo(playlist.Entries[0].ID)
-	if err != nil {
-		return err
-	}
-	err = voice.addItemToQueue(*firstVideo.Video)
-	if err != nil {
-		return err
-	}
-	go voice.addPlaylistItemsToQueue(playlist)
-	return nil
-}
-
-func (voice *Voice) AddSpotifyPlaylist(playlist spotifyClient.Playlist) error {
-	logger.Log.Debug("voice.AddSpotifyPlaylist")
-	embed := NewEmbed()
-	if len(playlist.Songs) > 1 && playlist.Title != "" {
-		embed.AddField("Playlist added to queue", fmt.Sprintf("%s by %s", playlist.Title, playlist.Uploader))
-		_, err := voice.Session.ChannelMessageSendEmbed(voice.ChannelID, embed.MessageEmbed)
-		if err != nil {
-			return err
-		}
-	}
-
-	url := yt.SearchVideo(fmt.Sprintf("%s - %s", playlist.Songs[0].Artist, playlist.Songs[0].Name))
-	info, err := youtube.GetVideoInfo(url.Path)
-	if err != nil {
-		logger.Log.Warningf("could not fetch video information for %s, err= %s", url, err)
-	}
-	err = voice.addItemToQueue(*info.Video)
-	if err != nil {
-		logger.Log.Warningf("Could not add song to play queue, err=%v", err)
-		return err
-	}
-
-	go func() {
-		for _, song := range playlist.Songs[1:] {
-			url := yt.SearchVideo(fmt.Sprintf("%s - %s", song.Artist, song.Name))
-			info, err := youtube.GetVideoInfo(url.Path)
-			if err != nil {
-				logger.Log.Warningf("could not fetch video information for %s, err= %s", url, err)
-				continue
-			}
-			err = voice.addItemToQueue(*info.Video)
-			if err != nil {
-				logger.Log.Warningf("Could not add song to play queue, err=%v", err)
-				continue
-			}
-		}
-	}()
-	return nil
-}
-
-func (voice *Voice) addPlaylistItemsToQueue(playlist youtube.Playlist) {
-	for _, video := range playlist.Entries[1:] {
-		vid, err := youtube.GetVideoInfo(video.ID)
-		if err != nil {
-			continue
-		}
-		err = voice.addItemToQueue(*vid.Video)
-		if err != nil {
-			logger.Log.Warningf("Could not add song to queue, err=%s", err)
-		}
-	}
 }
