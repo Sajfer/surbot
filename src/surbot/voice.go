@@ -19,7 +19,9 @@ type Voice struct {
 	StreamingSession *dca.StreamingSession
 	Session          *discordgo.Session
 	Playing          bool
-	ChannelID        string
+	voiceGuildID     string
+	voiceChannelID   string
+	channelID        string
 	done             chan error
 	timer            *Timer
 	music            *music.Music
@@ -34,27 +36,16 @@ func NewVoice(music *music.Music) *Voice {
 }
 
 func (voice *Voice) SetTextChannel(channel string) {
-	voice.ChannelID = channel
+	voice.channelID = channel
 }
 
 func (voice *Voice) SetSession(session *discordgo.Session) {
 	voice.Session = session
 }
 
-func (voice *Voice) Connect(userId, guildId string, mute, deaf bool) error {
+func (voice *Voice) Connect(channelId, guildId string, mute, deaf bool) error {
 	logger.Log.Debug("voice.Connect")
-	guild, err := voice.Session.State.Guild(guildId)
-	var channelId = ""
-	if err != nil {
-		return err
-	}
-	for _, person := range guild.VoiceStates {
-		if person.UserID == userId {
-			logger.Log.Debugf("Voice channel: %s", person.ChannelID)
-			channelId = person.ChannelID
-			break
-		}
-	}
+
 	if channelId == "" {
 		return errors.New("user not in a channel")
 	}
@@ -63,6 +54,8 @@ func (voice *Voice) Connect(userId, guildId string, mute, deaf bool) error {
 		return err
 	}
 	voice.VoiceChannel = vc
+	voice.voiceChannelID = channelId
+	voice.voiceGuildID = guildId
 	return nil
 }
 
@@ -73,7 +66,8 @@ func (voice *Voice) Disconnect() error {
 		voice.done <- errVoiceStoppedManually
 	}
 	voice.Playing = false
-
+	voice.voiceChannelID = ""
+	voice.voiceGuildID = ""
 	if voice.StreamingSession != nil {
 		_, err := voice.StreamingSession.Finished()
 		if err != nil {
@@ -104,7 +98,19 @@ func (voice *Voice) Start(m *discordgo.MessageCreate) error {
 	logger.Log.Debug("voice.PlayVideo")
 
 	if !voice.Playing {
-		err := voice.Connect(m.Author.ID, m.GuildID, false, true)
+		guild, err := voice.Session.State.Guild(m.GuildID)
+		if err != nil {
+			return err
+		}
+		channelId := ""
+		for _, person := range guild.VoiceStates {
+			if person.UserID == m.Author.ID {
+				logger.Log.Debugf("Voice channel: %s", person.ChannelID)
+				channelId = person.ChannelID
+				break
+			}
+		}
+		err = voice.Connect(channelId, m.GuildID, false, true)
 		if err != nil {
 			logger.Log.Warningf("could not join voice channel, err=%s", err)
 			return err
@@ -131,6 +137,8 @@ func (voice *Voice) play() error {
 		voice.music.Queue = voice.music.Queue[1:]
 		err := voice.Session.UpdateListeningStatus(song.Title)
 		if err != nil {
+			voice.Playing = false
+			voice.music.Queue = nil
 			return err
 		}
 
@@ -160,6 +168,16 @@ func (voice *Voice) play() error {
 					voice.music.CurrentSong = nil
 					go voice.timer.initTimer(time.Duration(timeout)*time.Minute, *voice)
 					return err
+				}
+			case dca.ErrVoiceConnClosed:
+				if msg != errVoiceSkippedManually {
+					_ = voice.Session.UpdateListeningStatus("")
+					voice.music.CurrentSong = nil
+					err := voice.Connect(voice.channelID, voice.VoiceChannel.GuildID, false, true)
+					if err != nil {
+						logger.Log.Warningf("could not join voice channel, err=%s", err)
+						return err
+					}
 				}
 			default:
 				return err
@@ -254,7 +272,7 @@ func (voice *Voice) ShowQueue() error {
 	if songList != "" {
 		embed.AddField("---", songList)
 	}
-	_, err := voice.Session.ChannelMessageSendEmbed(voice.ChannelID, embed.MessageEmbed)
+	_, err := voice.Session.ChannelMessageSendEmbed(voice.channelID, embed.MessageEmbed)
 	if err != nil {
 		return err
 	}
@@ -266,7 +284,7 @@ func (voice *Voice) ClearQueue() error {
 	embed := NewEmbed()
 	embed.SetTitle("Queue")
 	embed.AddField("Queue have been cleared", "Use !play <youtube link> to queue a song")
-	_, err := voice.Session.ChannelMessageSendEmbed(voice.ChannelID, embed.MessageEmbed)
+	_, err := voice.Session.ChannelMessageSendEmbed(voice.channelID, embed.MessageEmbed)
 	if err != nil {
 		return err
 	}
@@ -282,7 +300,7 @@ func (voice *Voice) NowPlaying() {
 	} else {
 		embed.AddField("Currently not playing", "Use !play <youtube link> to queue a song")
 	}
-	_, err := voice.Session.ChannelMessageSendEmbed(voice.ChannelID, embed.MessageEmbed)
+	_, err := voice.Session.ChannelMessageSendEmbed(voice.channelID, embed.MessageEmbed)
 	if err != nil {
 		logger.Log.Warningf("failed to send message, err=%s", err.Error())
 	}

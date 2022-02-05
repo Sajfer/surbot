@@ -82,7 +82,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "playing" {
-		voiceData.ChannelID = m.ChannelID
+		voiceData.channelID = m.ChannelID
 		voiceData.SetSession(s)
 		voiceData.NowPlaying()
 		return
@@ -90,7 +90,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 
 	if strings.HasPrefix(message, "play") {
 		logger.Log.Debugln("Playing music")
-		voiceData.ChannelID = m.ChannelID
+		voiceData.channelID = m.ChannelID
 		voiceData.SetSession(s)
 		query := strings.TrimPrefix(message, "play")
 		query = strings.ReplaceAll(query, " ", "")
@@ -108,7 +108,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "stop" {
-		voiceData.ChannelID = m.ChannelID
+		voiceData.channelID = m.ChannelID
 		voiceData.SetSession(s)
 		err := voiceData.Stop()
 		if err != nil {
@@ -117,7 +117,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "queue" {
-		voiceData.ChannelID = m.ChannelID
+		voiceData.channelID = m.ChannelID
 		voiceData.SetSession(s)
 		err := voiceData.ShowQueue()
 		if err != nil {
@@ -127,7 +127,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "skip" {
-		voiceData.ChannelID = m.ChannelID
+		voiceData.channelID = m.ChannelID
 		voiceData.SetSession(s)
 		err := voiceData.Skip()
 		if err != nil {
@@ -137,7 +137,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "disconnect" {
-		voiceData.ChannelID = m.ChannelID
+		voiceData.channelID = m.ChannelID
 		voiceData.SetSession(s)
 		err := voiceData.Disconnect()
 		if err != nil {
@@ -146,7 +146,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "clearQueue" {
-		voiceData.ChannelID = m.ChannelID
+		voiceData.channelID = m.ChannelID
 		voiceData.SetSession(s)
 		err := voiceData.ClearQueue()
 		if err != nil {
