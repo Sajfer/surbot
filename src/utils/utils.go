@@ -28,8 +28,12 @@ type inner struct {
 }
 
 var (
-	durationRegex            = `P(?P<years>\d+Y)?(?P<months>\d+M)?(?P<days>\d+D)?T?(?P<hours>\d+H)?(?P<minutes>\d+M)?(?P<seconds>\d+S)?`
-	ytUrlRegex               = `^(?:https?\:\/\/)?(?:www\.)?(?:(?:youtube\.com\/watch\?v=)|(?:youtu.be\/))([a-zA-Z0-9\-_]{11})+.*$|^(?:https:\/\/www.youtube.com\/playlist\?list=)([a-zA-Z0-9\-_].*).*$`
+	durationRegex = `P(?P<years>\d+Y)?(?P<months>\d+M)?(?P<days>\d+D)?T?(?P<hours>\d+H)?(?P<minutes>\d+M)?(?P<seconds>\d+S)?`
+
+	ytUrlRegex         = `^(?:https?\:\/\/)?(?:www\.)?(?:(?:youtube\.com\/watch\?v=)|(?:youtu.be\/))([a-zA-Z0-9\-_]{11})+.*$|^(?:https:\/\/www.youtube.com\/playlist\?list=)([a-zA-Z0-9\-_].*).*$`
+	ytPlaylistUrlRegex = `^(?:https:\/\/www.youtube.com\/playlist\?list=)([a-zA-Z0-9\-_]{34}).*$`
+	ytTrackUrlRegex    = `^(?:https?\:\/\/)?(?:www\.)?(?:(?:youtube\.com\/watch\?v=)|(?:youtu.be\/))([a-zA-Z0-9\-_]{11})+.*$`
+
 	spotifyHttpUrlRegex      = `^(?:https?:\/\/open.spotify.com\/(?:playlist\/|album\/|track\/)([a-zA-Z0-9]+))(?:.*)`
 	spotifyHttpPlaylistRegex = `^(https:\/\/open.spotify.com\/playlist\/[[a-zA-Z0-9]{22}\?.*)$`
 	spotifyHttpAlbumRegex    = `^(https:\/\/open.spotify.com\/album\/[[a-zA-Z0-9]{22}\?.*)$`
@@ -83,6 +87,16 @@ func FormatVideoTitle(videoTitle string) string {
 
 func IsYoutubeUrl(url string) bool {
 	re := regexp.MustCompile(ytUrlRegex)
+	return re.MatchString(url)
+}
+
+func IsYoutubeTrackUrl(url string) bool {
+	re := regexp.MustCompile(ytTrackUrlRegex)
+	return re.MatchString(url)
+}
+
+func IsYoutubePlaylistUrl(url string) bool {
+	re := regexp.MustCompile(ytPlaylistUrlRegex)
 	return re.MatchString(url)
 }
 

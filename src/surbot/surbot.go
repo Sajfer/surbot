@@ -11,9 +11,8 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"gitlab.com/sajfer/surbot/src/logger"
-	spotifyClient "gitlab.com/sajfer/surbot/src/spotify"
+	"gitlab.com/sajfer/surbot/src/music"
 	"gitlab.com/sajfer/surbot/src/utils"
-	"gitlab.com/sajfer/surbot/src/youtube"
 )
 
 // Surbot contain basic information about the bot
@@ -24,15 +23,15 @@ type Surbot struct {
 }
 
 var (
-	voiceData = NewVoice()
-	yt        *youtube.Youtube
-	sp        *spotifyClient.Client
+	voiceData    *Voice
+	musicClients *music.Music
 )
 
 // NewSurbot return an instance of surbot
 func NewSurbot(token, youtubeAPI, clientID, clientSecret, prefix, version string) Surbot {
-	yt = youtube.NewYoutube(youtubeAPI)
-	sp = spotifyClient.NewSpotifyClient(clientID, clientSecret)
+	logger.Log.Debug("NewSurbot")
+	musicClients = music.NewMusic(youtubeAPI, clientID, clientSecret)
+	voiceData = NewVoice(musicClients)
 	return Surbot{token: token, prefix: prefix, version: version}
 }
 
@@ -83,7 +82,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "playing" {
-		voiceData.ChannelID = m.ChannelID
+		voiceData.channelID = m.ChannelID
 		voiceData.SetSession(s)
 		voiceData.NowPlaying()
 		return
@@ -91,43 +90,17 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 
 	if strings.HasPrefix(message, "play") {
 		logger.Log.Debugln("Playing music")
-		voiceData.ChannelID = m.ChannelID
+		voiceData.channelID = m.ChannelID
 		voiceData.SetSession(s)
 		query := strings.TrimPrefix(message, "play")
 		query = strings.ReplaceAll(query, " ", "")
 
-		var url string
-
-		if utils.IsYoutubeUrl(query) {
-			url = query
-		} else if utils.IsSpotifyUrl(query) {
-			playlist, err := sp.Search(query)
-			if err != nil {
-				logger.Log.Warningf("Could not search for song, err=%v", err)
-				return
-			}
-			err = voiceData.AddSpotifyPlaylist(*playlist)
-			if err != nil {
-				logger.Log.Warningf("Could not add songs to queue, err=%v", err)
-				return
-			}
-			if !voiceData.Playing {
-				err = voiceData.Connect(m.Author.ID, m.GuildID, false, true)
-				if err != nil {
-					logger.Log.Warningf("could not join voice channel, err=%s", err)
-					return
-				}
-				err = voiceData.Play()
-				if err != nil {
-					logger.Log.Warningf("could not play song, err=%s", err)
-					return
-				}
-			}
-			return
-		} else {
-			url = yt.SearchVideo(query).Path
+		err := musicClients.FetchSong(query)
+		if err != nil {
+			logger.Log.Warningf("could not fetch song information, err=%v", err)
 		}
-		err := voiceData.PlayVideo(url, m)
+
+		err = voiceData.Start(m)
 		if err != nil {
 			logger.Log.Warningf("could not play song, err=%s", err)
 		}
@@ -135,7 +108,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "stop" {
-		voiceData.ChannelID = m.ChannelID
+		voiceData.channelID = m.ChannelID
 		voiceData.SetSession(s)
 		err := voiceData.Stop()
 		if err != nil {
@@ -144,7 +117,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "queue" {
-		voiceData.ChannelID = m.ChannelID
+		voiceData.channelID = m.ChannelID
 		voiceData.SetSession(s)
 		err := voiceData.ShowQueue()
 		if err != nil {
@@ -154,7 +127,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "skip" {
-		voiceData.ChannelID = m.ChannelID
+		voiceData.channelID = m.ChannelID
 		voiceData.SetSession(s)
 		err := voiceData.Skip()
 		if err != nil {
@@ -164,7 +137,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "disconnect" {
-		voiceData.ChannelID = m.ChannelID
+		voiceData.channelID = m.ChannelID
 		voiceData.SetSession(s)
 		err := voiceData.Disconnect()
 		if err != nil {
@@ -173,7 +146,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "clearQueue" {
-		voiceData.ChannelID = m.ChannelID
+		voiceData.channelID = m.ChannelID
 		voiceData.SetSession(s)
 		err := voiceData.ClearQueue()
 		if err != nil {
