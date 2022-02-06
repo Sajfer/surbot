@@ -2,6 +2,8 @@ package music
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
 
 	"gitlab.com/sajfer/surbot/src/logger"
 	spotifyClient "gitlab.com/sajfer/surbot/src/spotify"
@@ -202,4 +204,9 @@ func (m *Music) addYoutubePlaylist(youtubeInfo *youtube.Info) (*Playlist, error)
 		}()
 	}
 	return playlist, nil
+}
+
+func (m *Music) Shuffle() {
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(m.Queue), func(i, j int) { m.Queue[i], m.Queue[j] = m.Queue[j], m.Queue[i] })
 }
