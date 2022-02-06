@@ -61,17 +61,17 @@ func (m *Music) FetchSong(query string) error {
 		return nil
 	}
 	url := m.Youtube.SearchVideo(query).Path
-	info, err := youtube.GetVideoInfo(url)
+	video, err := m.Youtube.GetVideoInfo(url)
 	if err != nil {
 		logger.Log.Warningf("could not fetch video information for %s, err= %s", url, err)
 		return err
 	}
 	song := Song{
-		Title:     info.Video.Title,
-		Duration:  info.Video.Duration,
-		Thumbnail: info.Video.Thumbnail,
-		ID:        info.Video.ID,
-		StreamURL: info.Video.Formats[0].URL,
+		Title:     video.Songs[0].Title,
+		Duration:  video.Songs[0].Duration,
+		Thumbnail: video.Songs[0].Thumbnail,
+		ID:        video.Songs[0].ID,
+		StreamURL: video.Songs[0].StreamUrl,
 	}
 
 	m.Queue = append(m.Queue, &song)
@@ -96,36 +96,36 @@ func (m *Music) fetchSpotifySong(query string) (*Playlist, error) {
 	}
 
 	url := m.Youtube.SearchVideo(fmt.Sprintf("%s - %s", songs.Songs[0].Artist, songs.Songs[0].Name))
-	info, err := youtube.GetVideoInfo(url.Path)
+	video, err := m.Youtube.GetVideoInfo(url.Path)
 	if err != nil {
 		logger.Log.Warningf("could not fetch video information for %s, err= %s", url, err)
 		return playlist, fmt.Errorf("failed to fetch song information")
 	}
 
 	playlist.Songs = append(playlist.Songs, &Song{
-		Title:     info.Video.Title,
-		Duration:  info.Video.Duration,
-		Thumbnail: info.Video.Thumbnail,
-		ID:        info.Video.ID,
-		StreamURL: info.Video.Formats[0].URL,
+		Title:     video.Songs[0].Title,
+		Duration:  video.Songs[0].Duration,
+		Thumbnail: video.Songs[0].Thumbnail,
+		ID:        video.Songs[0].ID,
+		StreamURL: video.Songs[0].StreamUrl,
 	})
 
 	if len(songs.Songs) > 1 {
 		go func() {
 			for _, song := range songs.Songs[1:] {
 				url := m.Youtube.SearchVideo(fmt.Sprintf("%s - %s", song.Artist, song.Name))
-				info, err := youtube.GetVideoInfo(url.Path)
+				video, err := m.Youtube.GetVideoInfo(url.Path)
 				if err != nil {
 					logger.Log.Warningf("could not fetch video information for %s, err= %s", url, err)
 					continue
 				}
 
 				m.Queue = append(m.Queue, &Song{
-					Title:     info.Video.Title,
-					Duration:  info.Video.Duration,
-					Thumbnail: info.Video.Thumbnail,
-					ID:        info.Video.ID,
-					StreamURL: info.Video.Formats[0].URL,
+					Title:     video.Songs[0].Title,
+					Duration:  video.Songs[0].Duration,
+					Thumbnail: video.Songs[0].Thumbnail,
+					ID:        video.Songs[0].ID,
+					StreamURL: video.Songs[0].StreamUrl,
 				})
 			}
 		}()
@@ -137,14 +137,14 @@ func (m *Music) fetchSpotifySong(query string) (*Playlist, error) {
 func (m *Music) fetchYoutubeSong(query string) (*Playlist, error) {
 	logger.Log.Debug("music.fetchYoutubeSong")
 
-	info, err := youtube.GetVideoInfo(query)
+	video, err := m.Youtube.GetVideoInfo(query)
 	if err != nil {
 		logger.Log.Warningf("could not fetch video information for %s, err= %s", query, err)
 		return &Playlist{}, err
 	}
 	playlist := &Playlist{}
-	if info.Playlist != nil {
-		res, err := m.addYoutubePlaylist(&info)
+	if len(video.Songs) > 1 {
+		res, err := m.addYoutubePlaylist(video)
 		if err != nil {
 			logger.Log.Warningf("Could not fetch youtube playlist information, err=%v", err)
 			return playlist, err
@@ -153,57 +153,37 @@ func (m *Music) fetchYoutubeSong(query string) (*Playlist, error) {
 	}
 
 	playlist.Songs = append(playlist.Songs, &Song{
-		Title:     info.Video.Title,
-		Duration:  info.Video.Duration,
-		Thumbnail: info.Video.Thumbnail,
-		ID:        info.Video.ID,
-		StreamURL: info.Video.Formats[0].URL,
+		Title:     video.Songs[0].Title,
+		Duration:  video.Songs[0].Duration,
+		Thumbnail: video.Songs[0].Thumbnail,
+		ID:        video.Songs[0].ID,
+		StreamURL: video.Songs[0].StreamUrl,
 	})
 
 	return playlist, nil
 }
 
-func (m *Music) addYoutubePlaylist(youtubeInfo *youtube.Info) (*Playlist, error) {
+func (m *Music) addYoutubePlaylist(playlist *youtube.Playlist) (*Playlist, error) {
 	logger.Log.Debug("music.addYoutubePlaylist")
 
-	playlist := &Playlist{}
-	playlist.Title = youtubeInfo.Playlist.Title
-	playlist.Uploader = youtubeInfo.Playlist.Uploader
+	pl := &Playlist{}
+	pl.Title = playlist.Title
+	pl.Uploader = playlist.Uploader
 
-	if len(youtubeInfo.Playlist.Entries) == 0 {
-		return playlist, fmt.Errorf("playlist contain no songs")
+	if len(playlist.Songs) == 0 {
+		return pl, fmt.Errorf("playlist contain no songs")
 	}
 
-	firstSong := youtubeInfo.Playlist.Entries[0]
-
-	playlist.Songs = append(playlist.Songs, &Song{
-		Title:     firstSong.Title,
-		Duration:  firstSong.Duration,
-		Thumbnail: firstSong.Thumbnail,
-		ID:        firstSong.ID,
-		StreamURL: firstSong.Formats[0].URL,
-	})
-
-	if len(youtubeInfo.Playlist.Entries) > 1 {
-		go func() {
-			for _, song := range youtubeInfo.Playlist.Entries {
-				info, err := youtube.GetVideoInfo(song.ID)
-				if err != nil {
-					logger.Log.Warningf("could not fetch video information for %s, err= %s", song.ID, err)
-					continue
-				}
-
-				m.Queue = append(m.Queue, &Song{
-					Title:     info.Video.Title,
-					Duration:  info.Video.Duration,
-					Thumbnail: info.Video.Thumbnail,
-					ID:        info.Video.ID,
-					StreamURL: info.Video.Formats[0].URL,
-				})
-			}
-		}()
+	for _, song := range playlist.Songs {
+		m.Queue = append(m.Queue, &Song{
+			Title:     song.Title,
+			Duration:  song.Duration,
+			Thumbnail: song.Thumbnail,
+			ID:        song.ID,
+			StreamURL: song.StreamUrl,
+		})
 	}
-	return playlist, nil
+	return pl, nil
 }
 
 func (m *Music) Shuffle() {

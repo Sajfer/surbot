@@ -3,20 +3,17 @@ package youtube
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"strings"
 
-	jsoniter "github.com/json-iterator/go"
-
+	ytdl "github.com/kkdai/youtube/v2"
 	"gitlab.com/sajfer/surbot/src/logger"
 	"gitlab.com/sajfer/surbot/src/utils"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
-
 type Youtube struct {
+	ytdl   ytdl.Client
 	devKey string
 }
 
@@ -27,8 +24,22 @@ type SearchResult struct {
 	Path       string
 }
 
+type Video struct {
+	Title     string
+	Duration  float64
+	Thumbnail string
+	ID        string
+	StreamUrl string
+}
+
+type Playlist struct {
+	Title    string
+	Uploader string
+	Songs    []*Video
+}
+
 func NewYoutube(key string) *Youtube {
-	return &Youtube{devKey: key}
+	return &Youtube{devKey: key, ytdl: ytdl.Client{}}
 }
 
 func (yt *Youtube) SearchVideo(query string) *SearchResult {
@@ -67,43 +78,6 @@ func (yt *Youtube) SearchVideo(query string) *SearchResult {
 	return nil
 }
 
-// func (yt *Youtube) GetSongs(url string) *Playlist {
-// 	logger.Log.Info("youtube.GetVideo")
-
-// 	if utils.IsYoutubeTrackUrl(url) {
-// 		info, err := GetVideoInfo(url)
-// 		if err != nil {
-// 			logger.Log.Warningf("could not fetch video information for %s, err= %s", url, err)
-// 			return &Playlist{}
-// 		}
-
-// 		return &Playlist{
-// 			Songs: []Song{
-// 				{
-// 					Title:     info.Video.Title,
-// 					Duration:  info.Video.Duration,
-// 					Thumbnail: info.Video.Thumbnail,
-// 					StreamURL: info.Video.Formats[0].URL,
-// 				},
-// 			},
-// 		}
-// 	} else if utils.IsYoutubePlaylistUrl(url) {
-// 		info, err := GetVideoInfo(url)
-// 		if err != nil {
-// 			logger.Log.Warningf("could not fetch video information for %s, err= %s", url, err)
-// 			return &Playlist{}
-// 		}
-// 		playlist := Playlist{Title: info.Playlist.Title, Uploader: info.Playlist.Uploader}
-
-// 		for _, entry := range info.Playlist.Entries {
-
-// 		}
-
-// 	} else {
-// 		return &Playlist{}
-// 	}
-// }
-
 func (yt *Youtube) GetDurationByID(id string) string {
 	ctx := context.Background()
 
@@ -126,39 +100,52 @@ func (yt *Youtube) GetDurationByID(id string) string {
 }
 
 // GetInfo gets the info of a particular video or playlist
-func GetVideoInfo(url string) (Info, error) {
+func (yt *Youtube) GetVideoInfo(url string) (*Playlist, error) {
 	logger.Log.Debug("youtube.GetVideoInfo")
-	info := Info{}
-	cmd := exec.Command("youtube-dl", "-J", "--flat-playlist", url)
 
-	stdOut, err := cmd.StdoutPipe()
+	playlist := &Playlist{}
 
+	ytVideo, err := yt.ytdl.GetVideo(url)
 	if err != nil {
-		return Info{}, err
+		return playlist, err
 	}
-
-	if err := cmd.Start(); err != nil {
-		return Info{}, err
-	}
-
 	if strings.Contains(url, "list=") {
-		if err := json.NewDecoder(stdOut).Decode(&info.Playlist); err != nil {
-			return Info{}, err
+		youtubePlaylist, err := yt.ytdl.GetPlaylist(url)
+		if err != nil {
+			return playlist, err
 		}
-		temp := strings.Split(url, "&")
-		temp = strings.Split(temp[0], "=")
-		videoID := temp[1]
-		for i, id := range info.Playlist.Entries {
-			if videoID == id.ID {
-				info.Video = &info.Playlist.Entries[i]
-				break
+		playlist.Title = youtubePlaylist.Title
+		playlist.Uploader = youtubePlaylist.Author
+		for _, song := range youtubePlaylist.Videos {
+			tmp, err := yt.ytdl.VideoFromPlaylistEntry(song)
+			if err != nil {
+				continue
 			}
+			formats := tmp.Formats.WithAudioChannels()
+			streamUrl, _ := yt.ytdl.GetStreamURL(tmp, &formats[1])
+
+			video := &Video{
+				Title:     tmp.Title,
+				Duration:  tmp.Duration.Seconds(),
+				Thumbnail: tmp.Thumbnails[0].URL,
+				ID:        tmp.ID,
+				StreamUrl: streamUrl,
+			}
+			playlist.Songs = append(playlist.Songs, video)
 		}
 	} else {
-		if err := json.NewDecoder(stdOut).Decode(&info.Video); err != nil {
-			return Info{}, err
+		formats := ytVideo.Formats.WithAudioChannels()
+		streamUrl, _ := yt.ytdl.GetStreamURL(ytVideo, &formats[1])
+
+		video := &Video{
+			Title:     ytVideo.Title,
+			Duration:  ytVideo.Duration.Seconds(),
+			Thumbnail: ytVideo.Thumbnails[0].URL,
+			ID:        ytVideo.ID,
+			StreamUrl: streamUrl,
 		}
+		playlist.Songs = append(playlist.Songs, video)
 	}
 
-	return info, cmd.Wait()
+	return playlist, nil
 }

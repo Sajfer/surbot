@@ -145,7 +145,6 @@ func (voice *Voice) play() error {
 		if voice.timer.running {
 			voice.timer.stopTimer()
 		}
-		// voice.resetTimer(time.Duration(int(song.Metadata.Duration))*time.Second + time.Duration(timeout)*time.Minute)
 
 		voice.music.CurrentSong = song
 		voice.NowPlaying()
