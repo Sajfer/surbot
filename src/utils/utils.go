@@ -243,7 +243,8 @@ func PrintHelp(s *discordgo.Session, channel string) {
 			"**chuck**: Responds with chuck norris joke\n"+
 			"**play**: Play a youtube link\n"+
 			"**stop**: Stop playing music\n"+
-			"**queue**: Show the queue of music")
+			"**queue**: Show the queue of music\n"+
+			"**shuffle**: Shuffle the songs in the queue")
 	if err != nil {
 		log.Println("error sending message,", err)
 	}

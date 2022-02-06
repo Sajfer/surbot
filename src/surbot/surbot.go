@@ -88,6 +88,11 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		return
 	}
 
+	if message == "shuffle" {
+		musicClients.Shuffle()
+		return
+	}
+
 	if strings.HasPrefix(message, "play") {
 		logger.Log.Debugln("Playing music")
 		voiceData.channelID = m.ChannelID
