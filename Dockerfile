@@ -14,7 +14,7 @@ FROM alpine:3.15 as runner
 RUN adduser -s /bin/bash --disabled-password surbot && \
     apk add --no-cache \
         ffmpeg=4.4.1-r2 \
-        curl=7.80.0-r0 \
+        curl=7.80.0-r1 \
         python2=2.7.18-r4  && \
     curl -L https://yt-dl.org/downloads/latest/youtube-dl -o /usr/local/bin/youtube-dl && \
     chmod a+rx /usr/local/bin/youtube-dl
