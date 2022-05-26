@@ -30,14 +30,14 @@ type inner struct {
 var (
 	durationRegex = `P(?P<years>\d+Y)?(?P<months>\d+M)?(?P<days>\d+D)?T?(?P<hours>\d+H)?(?P<minutes>\d+M)?(?P<seconds>\d+S)?`
 
-	ytUrlRegex         = `^(?:https?\:\/\/)?(?:www\.)?(?:(?:youtube\.com\/watch\?v=)|(?:youtu.be\/))([a-zA-Z0-9\-_]{11})+.*$|^(?:https:\/\/www.youtube.com\/playlist\?list=)([a-zA-Z0-9\-_].*).*$`
-	ytPlaylistUrlRegex = `^(?:https:\/\/www.youtube.com\/playlist\?list=)([a-zA-Z0-9\-_]{34}).*$`
-	ytTrackUrlRegex    = `^(?:https?\:\/\/)?(?:www\.)?(?:(?:youtube\.com\/watch\?v=)|(?:youtu.be\/))([a-zA-Z0-9\-_]{11})+.*$`
+	ytUrlRegex         = `^(?:https?\:\/\/)?(?:www\.)?(?:(?:youtube\.com\/watch\?v=)|(?:youtu\.be\/))([a-zA-Z0-9\-_]{11})+.*$|^(?:https:\/\/www\.youtube\.com\/playlist\?list=)([a-zA-Z0-9\-_].*).*$`
+	ytPlaylistUrlRegex = `^(?:https:\/\/www\.youtube\.com\/playlist\?list=)([a-zA-Z0-9\-_]{34}).*$`
+	ytTrackUrlRegex    = `^(?:https?\:\/\/)?(?:www\.)?(?:(?:youtube\.com\/watch\?v=)|(?:youtu\.be\/))([a-zA-Z0-9\-_]{11})+.*$`
 
-	spotifyHttpUrlRegex      = `^(?:https?:\/\/open.spotify.com\/(?:playlist\/|album\/|track\/)([a-zA-Z0-9]+))(?:.*)`
-	spotifyHttpPlaylistRegex = `^(https:\/\/open.spotify.com\/playlist\/[[a-zA-Z0-9]{22}\?.*)$`
-	spotifyHttpAlbumRegex    = `^(https:\/\/open.spotify.com\/album\/[[a-zA-Z0-9]{22}\?.*)$`
-	spotifyHttpTrackRegex    = `^(https:\/\/open.spotify.com\/track\/[[a-zA-Z0-9]{22}\?.*)$`
+	spotifyHttpUrlRegex      = `^(?:https?:\/\/open\.spotify\.com\/(?:playlist\/|album\/|track\/)([a-zA-Z0-9]+))(?:.*)`
+	spotifyHttpPlaylistRegex = `^(https:\/\/open\.spotify\.com\/playlist\/[[a-zA-Z0-9]{22}\?.*)$`
+	spotifyHttpAlbumRegex    = `^(https:\/\/open\.spotify\.com\/album\/[[a-zA-Z0-9]{22}\?.*)$`
+	spotifyHttpTrackRegex    = `^(https:\/\/open\.spotify\.com\/track\/[[a-zA-Z0-9]{22}\?.*)$`
 )
 
 func RandomString(n int) string {
