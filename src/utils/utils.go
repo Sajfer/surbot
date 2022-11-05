@@ -2,7 +2,7 @@ package utils
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"log"
 	"math"
 	"math/rand"
@@ -204,7 +204,7 @@ func GetWebsite(addr string) []byte {
 		return []byte{}
 	}
 
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		log.Println("Could not read website body,", err)
 		return []byte{}
