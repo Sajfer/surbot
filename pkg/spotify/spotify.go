@@ -7,8 +7,8 @@ import (
 
 	"github.com/zmb3/spotify/v2"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
-	"gitlab.com/sajfer/surbot/src/logger"
-	"gitlab.com/sajfer/surbot/src/utils"
+	"gitlab.com/sajfer/surbot/internal/logger"
+	"gitlab.com/sajfer/surbot/internal/utils"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
 )

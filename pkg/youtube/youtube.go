@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	ytdl "github.com/kkdai/youtube/v2"
-	"gitlab.com/sajfer/surbot/src/logger"
-	"gitlab.com/sajfer/surbot/src/utils"
+	"gitlab.com/sajfer/surbot/internal/logger"
+	"gitlab.com/sajfer/surbot/internal/utils"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 )

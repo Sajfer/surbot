@@ -10,9 +10,9 @@ import (
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
-	"gitlab.com/sajfer/surbot/src/logger"
-	"gitlab.com/sajfer/surbot/src/music"
-	"gitlab.com/sajfer/surbot/src/utils"
+	"gitlab.com/sajfer/surbot/internal/logger"
+	"gitlab.com/sajfer/surbot/internal/utils"
+	"gitlab.com/sajfer/surbot/pkg/music"
 )
 
 // Surbot contain basic information about the bot

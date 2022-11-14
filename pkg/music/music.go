@@ -5,10 +5,10 @@ import (
 	"math/rand"
 	"time"
 
-	"gitlab.com/sajfer/surbot/src/logger"
-	spotifyClient "gitlab.com/sajfer/surbot/src/spotify"
-	"gitlab.com/sajfer/surbot/src/utils"
-	"gitlab.com/sajfer/surbot/src/youtube"
+	"gitlab.com/sajfer/surbot/internal/logger"
+	"gitlab.com/sajfer/surbot/internal/utils"
+	spotifyClient "gitlab.com/sajfer/surbot/pkg/spotify"
+	"gitlab.com/sajfer/surbot/pkg/youtube"
 )
 
 type Song struct {

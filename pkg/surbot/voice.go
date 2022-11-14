@@ -8,9 +8,9 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/sajfer/dca"
-	"gitlab.com/sajfer/surbot/src/logger"
-	"gitlab.com/sajfer/surbot/src/music"
-	"gitlab.com/sajfer/surbot/src/utils"
+	"gitlab.com/sajfer/surbot/internal/logger"
+	"gitlab.com/sajfer/surbot/internal/utils"
+	"gitlab.com/sajfer/surbot/pkg/music"
 )
 
 type Voice struct {

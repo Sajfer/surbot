@@ -3,7 +3,7 @@ package surbot
 import (
 	"time"
 
-	"gitlab.com/sajfer/surbot/src/logger"
+	"gitlab.com/sajfer/surbot/internal/logger"
 )
 
 type Timer struct {
