@@ -165,13 +165,13 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		var roll = 0
 		switch dice {
 		case "d6":
-			roll = rand.Intn(6)
+			roll = rand.Intn(6) // #nosec G404
 		case "d10":
-			roll = rand.Intn(10)
+			roll = rand.Intn(10) // #nosec G404
 		case "d20":
-			roll = rand.Intn(20)
+			roll = rand.Intn(20) // #nosec G404
 		case "d100":
-			roll = rand.Intn(100)
+			roll = rand.Intn(100) // #nosec G404
 		}
 		_, err := s.ChannelMessageSend(m.ChannelID, strconv.Itoa(roll))
 		if err != nil {

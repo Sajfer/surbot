@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"math"
-	"math/rand"
 	"net/http"
 	"os"
 	"regexp"
@@ -27,6 +26,10 @@ type inner struct {
 	Categories []string `json:"categories"`
 }
 
+const (
+	chuckUrl = "http://api.icndb.com/jokes/random"
+)
+
 var (
 	durationRegex = `P(?P<years>\d+Y)?(?P<months>\d+M)?(?P<days>\d+D)?T?(?P<hours>\d+H)?(?P<minutes>\d+M)?(?P<seconds>\d+S)?`
 
@@ -39,16 +42,6 @@ var (
 	spotifyHttpAlbumRegex    = `^(https:\/\/open\.spotify\.com\/album\/[[a-zA-Z0-9]{22}\?.*)$`
 	spotifyHttpTrackRegex    = `^(https:\/\/open\.spotify\.com\/track\/[[a-zA-Z0-9]{22}\?.*)$`
 )
-
-func RandomString(n int) string {
-	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-
-	s := make([]rune, n)
-	for i := range s {
-		s[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(s)
-}
 
 func zeroPad(str string) (result string) {
 	if len(str) < 2 {
@@ -180,7 +173,7 @@ func FloatToString(input_num float64) string {
 // GetChuckJoke return a chuck norris joke
 func GetChuckJoke() string {
 
-	body := GetWebsite("http://api.icndb.com/jokes/random")
+	body := GetWebsite(chuckUrl)
 
 	chuckresp := chuckResponse{}
 	err := json.Unmarshal(body, &chuckresp)
@@ -194,7 +187,7 @@ func GetChuckJoke() string {
 
 // GetWebsite returns the content of a website
 func GetWebsite(addr string) []byte {
-	response, err := http.Get(addr)
+	response, err := http.Get(addr) // #nosec G107
 	if err != nil {
 		log.Println("Could not get website,", err)
 		return []byte{}
