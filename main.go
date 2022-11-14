@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"gitlab.com/sajfer/surbot/src/surbot"
+	"gitlab.com/sajfer/surbot/pkg/surbot"
 )
 
 // Variables used for command line parameters

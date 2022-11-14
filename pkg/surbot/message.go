@@ -116,7 +116,7 @@ func (e *Embed) SetFooter(args ...string) *Embed {
 	return e
 }
 
-//SetImage ...
+// SetImage ...
 func (e *Embed) SetImage(args ...string) *Embed {
 	var URL string
 	var proxyURL string
@@ -137,7 +137,7 @@ func (e *Embed) SetImage(args ...string) *Embed {
 	return e
 }
 
-//SetThumbnail ...
+// SetThumbnail ...
 func (e *Embed) SetThumbnail(args ...string) *Embed {
 	var URL string
 	var proxyURL string
@@ -158,7 +158,7 @@ func (e *Embed) SetThumbnail(args ...string) *Embed {
 	return e
 }
 
-//SetAuthor ...
+// SetAuthor ...
 func (e *Embed) SetAuthor(args ...string) *Embed {
 	var (
 		name     string
@@ -193,13 +193,13 @@ func (e *Embed) SetAuthor(args ...string) *Embed {
 	return e
 }
 
-//SetURL ...
+// SetURL ...
 func (e *Embed) SetURL(URL string) *Embed {
 	e.URL = URL
 	return e
 }
 
-//SetColor ...
+// SetColor ...
 func (e *Embed) SetColor(clr int) *Embed {
 	e.Color = clr
 	return e
