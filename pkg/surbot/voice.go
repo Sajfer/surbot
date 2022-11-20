@@ -95,7 +95,7 @@ func (voice *Voice) Disconnect() error {
 }
 
 func (voice *Voice) Start(m *discordgo.MessageCreate) error {
-	logger.Log.Debug("voice.PlayVideo")
+	logger.Log.Debug("voice.Start")
 
 	if !voice.Playing {
 		guild, err := voice.Session.State.Guild(m.GuildID)
