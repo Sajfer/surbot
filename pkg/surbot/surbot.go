@@ -17,27 +17,42 @@ import (
 
 // Surbot contain basic information about the bot
 type Surbot struct {
-	token   string
-	version string
-	prefix  string
+	token        string
+	version      string
+	prefix       string
+	musicClients *music.MusicClients
+	servers      []*Server
 }
 
-var (
-	voiceData    *Voice
-	musicClients *music.Music
-)
+type Server struct {
+	id    string
+	voice *Voice
+}
 
 // NewSurbot return an instance of surbot
 func NewSurbot(token, youtubeAPI, clientID, clientSecret, prefix, version string) Surbot {
 	logger.Log.Debug("NewSurbot")
-	musicClients = music.NewMusic(youtubeAPI, clientID, clientSecret)
-	voiceData = NewVoice(musicClients)
-	return Surbot{token: token, prefix: prefix, version: version}
+	musicClients := music.NewMusicClients(youtubeAPI, clientID, clientSecret)
+	return Surbot{token: token, prefix: prefix, version: version, musicClients: musicClients}
+}
+
+// checkServer returns the server configuration of current server
+func (surbot *Surbot) checkServer(serverID string) *Server {
+	for _, t := range surbot.servers {
+		if t.id == serverID {
+			return t
+		}
+	}
+	musicClient := music.NewMusic()
+	voice := NewVoice(musicClient)
+	server := &Server{id: serverID, voice: voice}
+	surbot.servers = append(surbot.servers, server)
+	return server
 }
 
 // This function will be called (due to AddHandler above) every time a new
 // message is created on any channel that the autenticated bot has access to.
-func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageCreate) {
+func (surbot *Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// Ignore all messages created by the bot itself
 	// This isn't required in this specific example but it's a good practice.
@@ -49,6 +64,7 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 		return
 	}
 
+	server := surbot.checkServer(m.GuildID)
 	message := strings.TrimPrefix(m.Content, surbot.prefix)
 
 	// If the message is "ping" reply with "Pong!"
@@ -82,30 +98,36 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "playing" {
-		voiceData.channelID = m.ChannelID
-		voiceData.SetSession(s)
-		voiceData.NowPlaying()
+		voice := server.voice
+		voice.channelID = m.ChannelID
+		voice.SetSession(s)
+		voice.NowPlaying()
 		return
 	}
 
 	if message == "shuffle" {
-		musicClients.Shuffle()
+		server.voice.music.Shuffle()
 		return
 	}
 
 	if strings.HasPrefix(message, "play") {
 		logger.Log.Debugln("Playing music")
-		voiceData.channelID = m.ChannelID
-		voiceData.SetSession(s)
+		voice := server.voice
+		voice.channelID = m.ChannelID
+		voice.SetSession(s)
 		query := strings.TrimPrefix(message, "play")
 		query = strings.ReplaceAll(query, " ", "")
 
-		err := musicClients.FetchSong(query)
+		playlist, err := surbot.musicClients.FetchSong(query)
 		if err != nil {
 			logger.Log.Warningf("could not fetch song information, err=%v", err)
 		}
+		err = voice.music.AddToQueue(*playlist)
+		if err != nil {
+			logger.Log.Warningf("could not add songs to playlist, err=%v", err)
+		}
 
-		err = voiceData.Start(m)
+		err = voice.Start(m)
 		if err != nil {
 			logger.Log.Warningf("could not play song, err=%s", err)
 		}
@@ -113,18 +135,20 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "stop" {
-		voiceData.channelID = m.ChannelID
-		voiceData.SetSession(s)
-		err := voiceData.Stop()
+		voice := server.voice
+		voice.channelID = m.ChannelID
+		voice.SetSession(s)
+		err := voice.Stop()
 		if err != nil {
 			logger.Log.Warningf("could not stop playing song, err=%s", err)
 		}
 	}
 
 	if message == "queue" {
-		voiceData.channelID = m.ChannelID
-		voiceData.SetSession(s)
-		err := voiceData.ShowQueue()
+		voice := server.voice
+		voice.channelID = m.ChannelID
+		voice.SetSession(s)
+		err := voice.ShowQueue()
 		if err != nil {
 			logger.Log.Warningf("could not show queue, err=%s", err)
 		}
@@ -132,9 +156,10 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "skip" {
-		voiceData.channelID = m.ChannelID
-		voiceData.SetSession(s)
-		err := voiceData.Skip()
+		voice := server.voice
+		voice.channelID = m.ChannelID
+		voice.SetSession(s)
+		err := voice.Skip()
 		if err != nil {
 			logger.Log.Warning("could not skip song")
 		}
@@ -142,18 +167,20 @@ func (surbot Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageC
 	}
 
 	if message == "disconnect" {
-		voiceData.channelID = m.ChannelID
-		voiceData.SetSession(s)
-		err := voiceData.Disconnect()
+		voice := server.voice
+		voice.channelID = m.ChannelID
+		voice.SetSession(s)
+		err := voice.Disconnect()
 		if err != nil {
 			logger.Log.Warning("could not disconnect")
 		}
 	}
 
 	if message == "clearQueue" {
-		voiceData.channelID = m.ChannelID
-		voiceData.SetSession(s)
-		err := voiceData.ClearQueue()
+		voice := server.voice
+		voice.channelID = m.ChannelID
+		voice.SetSession(s)
+		err := voice.ClearQueue()
 		if err != nil {
 			logger.Log.Warning("could not clear queue")
 		}
