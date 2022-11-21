@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/bwmarrin/discordgo v0.26.1
-	github.com/kkdai/youtube/v2 v2.7.16
+	github.com/kkdai/youtube/v2 v2.7.18
 	github.com/sajfer/dca v0.0.0-20220128202838-5c6a61eb3931
 	github.com/sirupsen/logrus v1.9.0
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
@@ -18,7 +18,7 @@ require (
 	cloud.google.com/go/compute/metadata v0.2.1 // indirect
 	github.com/bitly/go-simplejson v0.5.0 // indirect
 	github.com/dlclark/regexp2 v1.7.0 // indirect
-	github.com/dop251/goja v0.0.0-20221025165401-cb5011b539fe // indirect
+	github.com/dop251/goja v0.0.0-20221115122301-6c0d9883792e // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
