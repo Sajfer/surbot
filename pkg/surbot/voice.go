@@ -148,6 +148,7 @@ func (voice *Voice) play() error {
 
 		voice.music.CurrentSong = song
 		voice.NowPlaying()
+		logger.Log.Infof("Now playing: %s - %s", song.Artist, song.Title)
 		msg, err := voice.playRaw(*song)
 		if msg != nil {
 			if msg == errVoiceStoppedManually {
