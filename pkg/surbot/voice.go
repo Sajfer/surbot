@@ -208,6 +208,7 @@ func (voice *Voice) playRaw(song music.Song) (error, error) {
 	options.Bitrate = 384
 	options.Application = "lowdelay"
 	options.Volume = 10
+	options.VBR = true
 
 	voice.EncodingSession, err = dca.EncodeFile(song.StreamURL, options)
 	if err != nil {
@@ -260,7 +261,7 @@ func (voice *Voice) ShowQueue() error {
 		songList = songList + fmt.Sprintf("%d. %s\n", index, voice.music.CurrentSong.Title)
 		index = index + 1
 	} else {
-		embed.AddField("No songs queued", "Use !play <youtube link> to queue a song")
+		embed.AddField("No songs queued", "Use !play <youtube link|spotify link> to queue a song")
 	}
 	for i, song := range voice.music.Queue {
 		if i > 18 {
@@ -283,7 +284,7 @@ func (voice *Voice) ClearQueue() error {
 	voice.music.Queue = nil
 	embed := NewEmbed()
 	embed.SetTitle("Queue")
-	embed.AddField("Queue have been cleared", "Use !play <youtube link> to queue a song")
+	embed.AddField("Queue have been cleared", "Use !play <youtube link|spotify link> to queue a song")
 	_, err := voice.Session.ChannelMessageSendEmbed(voice.channelID, embed.MessageEmbed)
 	if err != nil {
 		return err
@@ -298,7 +299,7 @@ func (voice *Voice) NowPlaying() {
 		embed.AddField("Duration", utils.SecondsToHuman(voice.music.CurrentSong.Duration))
 		embed.SetThumbnail(voice.music.CurrentSong.Thumbnail)
 	} else {
-		embed.AddField("Currently not playing", "Use !play <youtube link> to queue a song")
+		embed.AddField("Currently not playing", "Use !play <youtube link|spotify link> to queue a song")
 	}
 	_, err := voice.Session.ChannelMessageSendEmbed(voice.channelID, embed.MessageEmbed)
 	if err != nil {

@@ -202,7 +202,7 @@ func GetWebsite(addr string) []byte {
 		log.Println("Could not read website body,", err)
 		return []byte{}
 	}
-	defer response.Body.Close()
+	defer response.Body.Close() // #nosec G307
 
 	return body
 }
