@@ -48,6 +48,6 @@ func main() {
 		spotifyClientSecret = os.Getenv("SPOTIFY_CLIENTSECRET")
 	}
 
-	surbot := surbot.NewSurbot(Token, YoutubeAPI, spotifyClientID, spotifyClientSecret, Prefix, Version)
-	surbot.StartServer()
+	bot := surbot.NewSurbot(Token, YoutubeAPI, spotifyClientID, spotifyClientSecret, Prefix, Version)
+	bot.StartServer()
 }
