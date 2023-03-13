@@ -3,7 +3,7 @@ module gitlab.com/sajfer/surbot
 go 1.18
 
 require (
-	github.com/bwmarrin/discordgo v0.27.0
+	github.com/bwmarrin/discordgo v0.27.1
 	github.com/kkdai/youtube/v2 v2.7.18
 	github.com/sajfer/dca v0.0.0-20220128202838-5c6a61eb3931
 	github.com/sirupsen/logrus v1.9.0
