@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"gitlab.com/sajfer/surbot/internal/logger"
@@ -185,7 +186,29 @@ func (surbot *Surbot) messageReceived(s *discordgo.Session, m *discordgo.Message
 			logger.Log.Warning("could not clear queue")
 		}
 	}
-
+	if message == "rajd" {
+		currentTime := time.Now()
+		rajdChannel := "1006248135737221251"
+		for {
+			if currentTime.Format("Monday") == "Wednesday" {
+				break
+			}
+			msg, err := s.ChannelMessageSend(rajdChannel, currentTime.Format("Monday 01/02"))
+			if err != nil {
+				logger.Log.Warning("could not send message,", err)
+			}
+			err = s.MessageReactionAdd(rajdChannel, msg.ID, "✅")
+			if err != nil {
+				logger.Log.Warning("could not add emote,", err)
+			}
+			err = s.MessageReactionAdd(rajdChannel, msg.ID, "❌")
+			if err != nil {
+				logger.Log.Warning("could not add emote,", err)
+			}
+			currentTime = currentTime.AddDate(0, 0, 1)
+		}
+		return
+	}
 	if strings.HasPrefix(message, "roll") {
 		dice := strings.TrimPrefix(message, "roll")
 		dice = strings.ReplaceAll(dice, " ", "")
