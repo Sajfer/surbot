@@ -9,7 +9,7 @@ COPY . .
 RUN make
 
 
-FROM alpine:3.16 as runner
+FROM alpine:3.17 as runner
 
 RUN adduser -u 1000 -s /bin/bash --disabled-password surbot && \
   apk add --no-cache \
