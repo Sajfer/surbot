@@ -190,9 +190,6 @@ func (surbot *Surbot) messageReceived(s *discordgo.Session, m *discordgo.Message
 		currentTime := time.Now()
 		rajdChannel := "1006248135737221251"
 		for {
-			if currentTime.Format("Monday") == "Wednesday" {
-				break
-			}
 			msg, err := s.ChannelMessageSend(rajdChannel, currentTime.Format("Monday 01/02"))
 			if err != nil {
 				logger.Log.Warning("could not send message,", err)
@@ -206,6 +203,9 @@ func (surbot *Surbot) messageReceived(s *discordgo.Session, m *discordgo.Message
 				logger.Log.Warning("could not add emote,", err)
 			}
 			currentTime = currentTime.AddDate(0, 0, 1)
+			if currentTime.Format("Monday") == "Wednesday" {
+				break
+			}
 		}
 		return
 	}
