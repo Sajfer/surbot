@@ -7,5 +7,7 @@ __debug_bin
 
 vendor/
 
+.env
+
 out/
 bin/
