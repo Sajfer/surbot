@@ -170,8 +170,8 @@ github.com/jonas747/ogg v0.0.0-20161220051205-b4f6f4cf3757/go.mod h1:cZnNmdLiLpi
 github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1:6v2b51hI/fHJwM22ozAgKL4VKDeJcHhJFhtBdhmNjmU=
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
-github.com/kkdai/youtube/v2 v2.8.0 h1:9y+xrYAR+ed4wV6cNPq3rMvVlRV8TFco3uuEUdqRzHI=
-github.com/kkdai/youtube/v2 v2.8.0/go.mod h1:FMx1e/QBA+GBoRpwLAYJoJZcPE+P0yeA2ckAbPCHZow=
+github.com/kkdai/youtube/v2 v2.8.1 h1:8I1WYzJSWGFXIR18F/yJ+8HGxplPXNYW8+sQR9EKxZ0=
+github.com/kkdai/youtube/v2 v2.8.1/go.mod h1:FMx1e/QBA+GBoRpwLAYJoJZcPE+P0yeA2ckAbPCHZow=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfnI=
 github.com/kr/pretty v0.3.0 h1:WgNl7dwNpEZ6jJ9k1snq4pZsg7DOEN8hP9Xw0Tsjwk0=
