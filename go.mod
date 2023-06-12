@@ -10,7 +10,7 @@ require (
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	github.com/zmb3/spotify/v2 v2.3.1
 	golang.org/x/oauth2 v0.8.0
-	google.golang.org/api v0.125.0
+	google.golang.org/api v0.126.0
 )
 
 require (
