@@ -8,7 +8,7 @@ require (
 	github.com/sajfer/dca v0.0.0-20220128202838-5c6a61eb3931
 	github.com/sirupsen/logrus v1.9.3
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
-	github.com/zmb3/spotify/v2 v2.3.1
+	github.com/zmb3/spotify/v2 v2.4.0
 	golang.org/x/oauth2 v0.12.0
 	google.golang.org/api v0.142.0
 )
