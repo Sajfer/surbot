@@ -1,11 +1,11 @@
 package surbot
 
 import (
+	"crypto/rand"
 	"log"
-	"math/rand"
+	"math/big"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -19,7 +19,6 @@ import (
 // Surbot contain basic information about the bot
 type Surbot struct {
 	token        string
-	version      string
 	prefix       string
 	musicClients *music.MusicClients
 	servers      []*Server
@@ -31,10 +30,10 @@ type Server struct {
 }
 
 // NewSurbot return an instance of surbot
-func NewSurbot(token, youtubeAPI, clientID, clientSecret, prefix, version string) Surbot {
+func NewSurbot(token, youtubeAPI, clientID, clientSecret, prefix string) Surbot {
 	logger.Log.Debug("NewSurbot")
 	musicClients := music.NewMusicClients(youtubeAPI, clientID, clientSecret)
-	return Surbot{token: token, prefix: prefix, version: version, musicClients: musicClients}
+	return Surbot{token: token, prefix: prefix, musicClients: musicClients}
 }
 
 // checkServer returns the server configuration of current server
@@ -71,14 +70,6 @@ func (surbot *Surbot) messageReceived(s *discordgo.Session, m *discordgo.Message
 	// If the message is "ping" reply with "Pong!"
 	if message == "ping" {
 		_, err := s.ChannelMessageSend(m.ChannelID, "Pong!")
-		if err != nil {
-			logger.Log.Warning("could not send message,", err)
-		}
-		return
-	}
-
-	if message == "version" {
-		_, err := s.ChannelMessageSend(m.ChannelID, "Version "+surbot.version)
 		if err != nil {
 			logger.Log.Warning("could not send message,", err)
 		}
@@ -212,18 +203,31 @@ func (surbot *Surbot) messageReceived(s *discordgo.Session, m *discordgo.Message
 	if strings.HasPrefix(message, "roll") {
 		dice := strings.TrimPrefix(message, "roll")
 		dice = strings.ReplaceAll(dice, " ", "")
-		var roll = 0
+		var roll *big.Int
+		var err error
 		switch dice {
 		case "d6":
-			roll = rand.Intn(6) // #nosec G404
+			roll, err = rand.Int(rand.Reader, big.NewInt(6)) // #nosec G404
+			if err != nil {
+				logger.Log.Warning("could not generate random number,", err)
+			}
 		case "d10":
-			roll = rand.Intn(10) // #nosec G404
+			roll, err = rand.Int(rand.Reader, big.NewInt(10)) // #nosec G404
+			if err != nil {
+				logger.Log.Warning("could not generate random number,", err)
+			}
 		case "d20":
-			roll = rand.Intn(20) // #nosec G404
+			roll, err = rand.Int(rand.Reader, big.NewInt(20)) // #nosec G404
+			if err != nil {
+				logger.Log.Warning("could not generate random number,", err)
+			}
 		case "d100":
-			roll = rand.Intn(100) // #nosec G404
+			roll, err = rand.Int(rand.Reader, big.NewInt(100)) // #nosec G404
+			if err != nil {
+				logger.Log.Warning("could not generate random number,", err)
+			}
 		}
-		_, err := s.ChannelMessageSend(m.ChannelID, strconv.Itoa(roll))
+		_, err = s.ChannelMessageSend(m.ChannelID, roll.String())
 		if err != nil {
 			logger.Log.Warning("could not send message,", err)
 		}

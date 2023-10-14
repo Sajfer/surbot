@@ -2,9 +2,7 @@ package main
 
 import (
 	"flag"
-	"math/rand"
 	"os"
-	"time"
 
 	"gitlab.com/sajfer/surbot/pkg/surbot"
 )
@@ -12,7 +10,6 @@ import (
 // Variables used for command line parameters
 var (
 	Token               string
-	Version             string
 	Prefix              string
 	YoutubeAPI          string
 	spotifyClientID     string
@@ -20,17 +17,12 @@ var (
 )
 
 func main() {
-
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	flag.StringVar(&Token, "t", "", "Bot Token")
 	flag.StringVar(&YoutubeAPI, "y", "", "Youtube API token")
 	flag.StringVar(&spotifyClientID, "cid", "", "Spotify clientID")
 	flag.StringVar(&spotifyClientSecret, "cs", "", "Spotify clientSecretID")
 	flag.StringVar(&Prefix, "p", "!", "Bot Prefix")
 	flag.Parse()
-
-	Version = "1.2.0"
 
 	if Token == "" {
 		Token = os.Getenv("TOKEN")
@@ -48,6 +40,6 @@ func main() {
 		spotifyClientSecret = os.Getenv("SPOTIFY_CLIENTSECRET")
 	}
 
-	bot := surbot.NewSurbot(Token, YoutubeAPI, spotifyClientID, spotifyClientSecret, Prefix, Version)
+	bot := surbot.NewSurbot(Token, YoutubeAPI, spotifyClientID, spotifyClientSecret, Prefix)
 	bot.StartServer()
 }
