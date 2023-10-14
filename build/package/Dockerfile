@@ -1,4 +1,4 @@
-FROM golang:1.19.3-alpine as builder
+FROM golang:1.21.1-alpine as builder
 
 RUN apk add --no-cache \
   make \
@@ -9,7 +9,7 @@ COPY . .
 RUN make
 
 
-FROM alpine:3.17 as runner
+FROM alpine:3.18 as runner
 
 RUN adduser -u 1000 -s /bin/bash --disabled-password surbot && \
   apk add --no-cache \

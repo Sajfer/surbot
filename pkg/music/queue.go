@@ -2,7 +2,6 @@ package music
 
 import (
 	"math/rand"
-	"time"
 )
 
 type Song struct {
@@ -36,6 +35,5 @@ func (m *Music) AddToQueue(playlist Playlist) error {
 }
 
 func (m *Music) Shuffle() {
-	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(m.Queue), func(i, j int) { m.Queue[i], m.Queue[j] = m.Queue[j], m.Queue[i] })
 }
