@@ -11,7 +11,7 @@ RUN make
 
 FROM alpine:3.18 as runner
 
-RUN adduser -u 1000 -s /bin/bash --disabled-password surbot && \
+RUN adduser -u 10000 -s /bin/bash --disabled-password surbot && \
   apk add --no-cache \
     ffmpeg \
     curl \

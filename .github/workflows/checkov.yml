@@ -9,14 +9,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.8
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
         uses: actions/setup-python@v4
         with:
-          python-version: 3.8
+          python-version: 3.12
       - name: Test with Checkov
         id: checkov
         uses: bridgecrewio/checkov-action@master
+        env:
+          HELM_NAMESPACE: not-default
         with:
+          quiet: true
           directory: deployments
           framework: helm
