@@ -33,7 +33,7 @@ podAnnotations: {}
 podSecurityContext: {}
   # fsGroup: 2000
 
-securityContext: {}
+securityContext:
   capabilities:
     drop:
     - ALL
@@ -41,7 +41,7 @@ securityContext: {}
   runAsNonRoot: true
   runAsUser: 1000
 
-resources: {}
+resources:
   limits:
     cpu: 100m
     memory: 128Mi
