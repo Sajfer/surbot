@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/bwmarrin/discordgo v0.27.1
-	github.com/kkdai/youtube/v2 v2.8.4
+	github.com/kkdai/youtube/v2 v2.9.0
 	github.com/sajfer/dca v0.0.0-20220128202838-5c6a61eb3931
 	github.com/sirupsen/logrus v1.9.3
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
@@ -18,11 +18,11 @@ require (
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	github.com/bitly/go-simplejson v0.5.1 // indirect
 	github.com/dlclark/regexp2 v1.10.0 // indirect
-	github.com/dop251/goja v0.0.0-20230812105242-81d76064690d // indirect
+	github.com/dop251/goja v0.0.0-20230828202809-3dbe69dd2b8e // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/pprof v0.0.0-20230811205829-9131a7e9cc17 // indirect
+	github.com/google/pprof v0.0.0-20230907193218-d3ddc7976beb // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/google/uuid v1.3.1 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.1 // indirect
