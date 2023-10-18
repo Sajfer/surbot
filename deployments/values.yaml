@@ -42,7 +42,7 @@ securityContext:
   readOnlyRootFilesystem: true
   runAsNonRoot: true
   runAsUser: 10000
-  allowPrivelegeEscalation: false
+  allowPrivilegeEscalation: false
 
 resources:
   limits:
