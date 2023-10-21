@@ -6,7 +6,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/sajfer/surbot
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
@@ -30,18 +30,21 @@ spotify_clientsecret: ""
 
 podAnnotations: {}
 
-podSecurityContext: {}
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
   # fsGroup: 2000
 
-securityContext: {}
+securityContext:
   capabilities:
     drop:
     - ALL
   readOnlyRootFilesystem: true
   runAsNonRoot: true
-  runAsUser: 1000
+  runAsUser: 10000
+  allowPrivilegeEscalation: false
 
-resources: {}
+resources:
   limits:
     cpu: 100m
     memory: 128Mi
