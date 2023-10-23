@@ -1,3 +1,4 @@
+// Package spotifyClient provides spotify playback functionality.
 package spotifyClient
 
 import (

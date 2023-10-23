@@ -1,3 +1,4 @@
+// Package utils privides utility functions for Surbot.
 package utils
 
 import (

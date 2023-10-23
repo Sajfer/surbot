@@ -1,3 +1,4 @@
+// Package surbot contains the main functionality for Surbot.
 package surbot
 
 import (
@@ -124,79 +125,87 @@ func (voice *Voice) Start(m *discordgo.MessageCreate) error {
 	return nil
 }
 
+func (voice *Voice) stopPlaying() error {
+	err := voice.Session.UpdateListeningStatus("")
+	voice.music.CurrentSong = nil
+	go voice.timer.initTimer(time.Duration(timeout)*time.Minute, *voice)
+	return err
+}
+
+func (voice *Voice) getSongFromQueue() (*music.Song, error) {
+	if len(voice.music.Queue) == 0 {
+		return nil, fmt.Errorf("queue is empty")
+	}
+	song := voice.music.Queue[0]
+	voice.music.Queue = voice.music.Queue[1:]
+	err := voice.Session.UpdateListeningStatus(song.Title)
+	if err != nil {
+		voice.Playing = false
+		voice.music.Queue = nil
+		return nil, err
+	}
+	return song, nil
+}
+
 func (voice *Voice) play() error {
 	logger.Log.Debug("voice.Play")
 
-	if !voice.Playing {
-		voice.Playing = true
+	if voice.Playing {
+		return nil
+	}
 
-		if len(voice.music.Queue) == 0 {
-			return fmt.Errorf("queue is empty")
-		}
-		song := voice.music.Queue[0]
-		voice.music.Queue = voice.music.Queue[1:]
-		err := voice.Session.UpdateListeningStatus(song.Title)
-		if err != nil {
+	voice.Playing = true
+
+	if voice.timer.running {
+		voice.timer.stopTimer()
+	}
+	song, err := voice.getSongFromQueue()
+	if err != nil {
+		return err
+	}
+
+	voice.music.CurrentSong = song
+	voice.NowPlaying()
+	logger.Log.Infof("Now playing: %s - %s", song.Artist, song.Title)
+	msg, err := voice.playRaw(*song)
+	if msg != nil {
+		if msg == errVoiceStoppedManually {
 			voice.Playing = false
-			voice.music.Queue = nil
-			return err
+			return voice.stopPlaying()
 		}
-
-		if voice.timer.running {
-			voice.timer.stopTimer()
-		}
-
-		voice.music.CurrentSong = song
-		voice.NowPlaying()
-		logger.Log.Infof("Now playing: %s - %s", song.Artist, song.Title)
-		msg, err := voice.playRaw(*song)
-		if msg != nil {
-			if msg == errVoiceStoppedManually {
-				voice.Playing = false
-				err := voice.Session.UpdateListeningStatus("")
-				voice.music.CurrentSong = nil
-				go voice.timer.initTimer(time.Duration(timeout)*time.Minute, *voice)
-				return err
+	}
+	if err != nil {
+		voice.Playing = false
+		switch err {
+		case io.ErrUnexpectedEOF:
+			if msg != errVoiceSkippedManually {
+				return voice.stopPlaying()
 			}
-		}
-		if err != nil {
-			voice.Playing = false
-			switch err {
-			case io.ErrUnexpectedEOF:
-				if msg != errVoiceSkippedManually {
-					_ = voice.Session.UpdateListeningStatus("")
-					voice.music.CurrentSong = nil
-					go voice.timer.initTimer(time.Duration(timeout)*time.Minute, *voice)
+		case dca.ErrVoiceConnClosed:
+			if msg != errVoiceSkippedManually {
+				_ = voice.Session.UpdateListeningStatus("")
+				voice.music.CurrentSong = nil
+				err := voice.Connect(voice.channelID, voice.VoiceChannel.GuildID, false, true)
+				if err != nil {
+					logger.Log.Warningf("could not join voice channel, err=%s", err)
 					return err
 				}
-			case dca.ErrVoiceConnClosed:
-				if msg != errVoiceSkippedManually {
-					_ = voice.Session.UpdateListeningStatus("")
-					voice.music.CurrentSong = nil
-					err := voice.Connect(voice.channelID, voice.VoiceChannel.GuildID, false, true)
-					if err != nil {
-						logger.Log.Warningf("could not join voice channel, err=%s", err)
-						return err
-					}
-				}
-			default:
-				return err
 			}
+		default:
+			return err
 		}
-		if len(voice.music.Queue) > 0 {
-			return voice.play()
-		} else {
-			err := voice.Session.UpdateListeningStatus("")
-			if err != nil {
-				return err
-			}
-			voice.music.CurrentSong = nil
-			go voice.timer.initTimer(time.Duration(timeout)*time.Minute, *voice)
-			return nil
-		}
-
 	}
-	return nil
+	if len(voice.music.Queue) > 0 {
+		return voice.play()
+	} else {
+		err := voice.Session.UpdateListeningStatus("")
+		if err != nil {
+			return err
+		}
+		voice.music.CurrentSong = nil
+		go voice.timer.initTimer(time.Duration(timeout)*time.Minute, *voice)
+		return nil
+	}
 }
 
 func (voice *Voice) playRaw(song music.Song) (error, error) {

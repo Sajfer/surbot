@@ -6,7 +6,7 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 COPY . .
-RUN make
+RUN make build
 
 
 FROM alpine:3.18 as runner
