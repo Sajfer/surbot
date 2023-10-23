@@ -1,3 +1,4 @@
+// Package youtube provides youtube playback functionality.
 package youtube
 
 import (

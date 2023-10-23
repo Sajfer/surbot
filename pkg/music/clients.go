@@ -1,3 +1,4 @@
+// Package music provides music playback functionality.
 package music
 
 import (

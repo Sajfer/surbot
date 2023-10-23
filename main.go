@@ -1,3 +1,4 @@
+// Package main provides the main fuctionality for Surbot.
 package main
 
 import (

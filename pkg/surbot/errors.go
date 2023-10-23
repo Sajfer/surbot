@@ -1,3 +1,4 @@
+// Package surbot contains the main functionality for Surbot.
 package surbot
 
 import "errors"
