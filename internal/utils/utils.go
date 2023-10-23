@@ -79,37 +79,37 @@ func FormatVideoTitle(videoTitle string) string {
 	return newTitle
 }
 
-func IsYoutubeUrl(url string) bool {
+func IsYoutubeURL(url string) bool {
 	re := regexp.MustCompile(ytUrlRegex)
 	return re.MatchString(url)
 }
 
-func IsYoutubeTrackUrl(url string) bool {
+func IsYoutubeTrackURL(url string) bool {
 	re := regexp.MustCompile(ytTrackUrlRegex)
 	return re.MatchString(url)
 }
 
-func IsYoutubePlaylistUrl(url string) bool {
+func IsYoutubePlaylistURL(url string) bool {
 	re := regexp.MustCompile(ytPlaylistUrlRegex)
 	return re.MatchString(url)
 }
 
-func IsSpotifyUrl(url string) bool {
+func IsSpotifyURL(url string) bool {
 	re := regexp.MustCompile(spotifyHttpUrlRegex)
 	return re.MatchString(url)
 }
 
-func IsSpotifyTrackUrl(url string) bool {
+func IsSpotifyTrackURL(url string) bool {
 	re := regexp.MustCompile(spotifyHttpTrackRegex)
 	return re.MatchString(url)
 }
 
-func IsSpotifyAlbumUrl(url string) bool {
+func IsSpotifyAlbumURL(url string) bool {
 	re := regexp.MustCompile(spotifyHttpAlbumRegex)
 	return re.MatchString(url)
 }
 
-func IsSpotifyPlaylistUrl(url string) bool {
+func IsSpotifyPlaylistURL(url string) bool {
 	re := regexp.MustCompile(spotifyHttpPlaylistRegex)
 	return re.MatchString(url)
 }
@@ -166,9 +166,9 @@ func CheckFileExists(filename string) bool {
 	return !os.IsNotExist(err)
 }
 
-func FloatToString(input_num float64) string {
+func FloatToString(input float64) string {
 	// to convert a float number to a string
-	return strconv.FormatFloat(input_num, 'f', 6, 64)
+	return strconv.FormatFloat(input, 'f', 6, 64)
 }
 
 // GetChuckJoke return a chuck norris joke

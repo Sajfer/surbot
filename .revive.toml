@@ -1,24 +1,30 @@
-# When set to false, ignores files with "GENERATED" header, similar to golint
-ignoreGeneratedHeader = true
-
-# Sets the default severity to "warning"
+ignoreGeneratedHeader = false
 severity = "warning"
-
-# Sets the default failure confidence. This means that linting errors
-# with less than 0.8 confidence will be ignored.
 confidence = 0.8
-
-# Sets the error code for failures with severity "error"
 errorCode = 0
-
-# Sets the error code for failures with severity "warning"
 warningCode = 0
 
-# Configuration of the `cyclomatic` rule. Here we specify that
-# the rule should fail if it detects code with higher complexity than 15.
-[rule.cyclomatic]
-  arguments = [15]
-
-# Sets the severity of the `package-comments` rule to "error".
+[rule.blank-imports]
+[rule.context-as-argument]
+[rule.context-keys-type]
+[rule.dot-imports]
+[rule.error-return]
+[rule.error-strings]
+[rule.error-naming]
+[rule.exported]
+[rule.if-return]
+[rule.increment-decrement]
+[rule.var-naming]
+[rule.var-declaration]
 [rule.package-comments]
-  severity = "error"
+[rule.range]
+[rule.receiver-naming]
+[rule.time-naming]
+[rule.unexported-return]
+[rule.indent-error-flow]
+[rule.errorf]
+[rule.empty-block]
+[rule.superfluous-else]
+[rule.unused-parameter]
+[rule.unreachable-code]
+[rule.redefines-builtin-id]
