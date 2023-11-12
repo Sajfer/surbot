@@ -3,44 +3,40 @@ package main
 
 import (
 	"flag"
-	"os"
+	"fmt"
+
+	"github.com/spf13/viper"
 
 	"gitlab.com/sajfer/surbot/pkg/surbot"
 )
 
+type envConfig struct {
+	Token               string `mapstructure:"TOKEN"`
+	YoutubeAPI          string `mapstructure:"YOUTUBE_API"`
+	SpotifyClientID     string `mapstructure:"SPOTIFY_CLIENTID"`
+	SpotifyClientSecret string `mapstructure:"SPOTIFY_CLIENTSECRET"`
+}
+
 // Variables used for command line parameters
 var (
-	Token               string
-	Prefix              string
-	YoutubeAPI          string
-	spotifyClientID     string
-	spotifyClientSecret string
+	Prefix     string
+	EnvConfigs *envConfig
 )
 
 func main() {
-	flag.StringVar(&Token, "t", "", "Bot Token")
-	flag.StringVar(&YoutubeAPI, "y", "", "Youtube API token")
-	flag.StringVar(&spotifyClientID, "cid", "", "Spotify clientID")
-	flag.StringVar(&spotifyClientSecret, "cs", "", "Spotify clientSecretID")
+	EnvConfigs = new(envConfig)
+	viper.SetConfigFile(".env")
+	viper.AutomaticEnv()
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Printf("could not read config, %v", err.Error())
+	}
+	if err := viper.Unmarshal(&EnvConfigs); err != nil {
+		fmt.Printf("could not read envs, %v", err.Error())
+	}
 	flag.StringVar(&Prefix, "p", "!", "Bot Prefix")
 	flag.Parse()
 
-	if Token == "" {
-		Token = os.Getenv("TOKEN")
-	}
-
-	if YoutubeAPI == "" {
-		YoutubeAPI = os.Getenv("YOUTUBE_API")
-	}
-
-	if spotifyClientID == "" {
-		spotifyClientID = os.Getenv("SPOTIFY_CLIENTID")
-	}
-
-	if spotifyClientSecret == "" {
-		spotifyClientSecret = os.Getenv("SPOTIFY_CLIENTSECRET")
-	}
-
-	bot := surbot.NewSurbot(Token, YoutubeAPI, spotifyClientID, spotifyClientSecret, Prefix)
+	fmt.Printf("token: %v", EnvConfigs.Token)
+	bot := surbot.NewSurbot(EnvConfigs.Token, EnvConfigs.YoutubeAPI, EnvConfigs.SpotifyClientID, EnvConfigs.SpotifyClientSecret, Prefix)
 	bot.StartServer()
 }

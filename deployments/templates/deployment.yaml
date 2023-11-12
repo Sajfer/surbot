@@ -37,23 +37,35 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
           - name: TOKEN
-            value: {{ .Values.discord_token }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "surbot.fullname" . }}-secrets
+                key: DiscordToken
           - name: YOUTUBE_API
-            value: {{ .Values.youtube_api }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "surbot.fullname" . }}-secrets
+                key: YoutubeApiToken
           - name: SPOTIFY_CLIENTID
-            value: {{ .Values.spotify_clientid }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "surbot.fullname" . }}-secrets
+                key: SpotifyClientId
           - name: SPOTIFY_CLIENTSECRET
-            value: {{ .Values.spotify_clientsecret }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "surbot.fullname" . }}-secrets
+                key: SpotifyClientSecret
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: 8080
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: 8080
+            #livenessProbe:
+            #httpGet:
+            #  path: /healthz
+            #  port: 8080
+            #readinessProbe:
+            #httpGet:
+            #  path: /healthz
+            #  port: 8080
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
