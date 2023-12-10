@@ -216,7 +216,7 @@ func (voice *Voice) playRaw(song music.Song) (error, error) {
 	options.RawOutput = true
 	options.Bitrate = 384
 	options.Application = "lowdelay"
-	options.Volume = 10
+	options.Volume = 0.05
 	options.VBR = true
 
 	voice.EncodingSession, err = dca.EncodeFile(song.StreamURL, options)
