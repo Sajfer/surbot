@@ -1,4 +1,4 @@
-FROM golang:1.21.1-alpine as builder
+FROM golang:1.21.5-alpine as builder
 
 RUN apk add --no-cache \
   make \
@@ -16,7 +16,7 @@ RUN adduser -u 10000 -s /bin/bash --disabled-password surbot && \
     ffmpeg \
     curl \
     python3 && \
-  curl -L https://yt-dl.org/downloads/latest/youtube-dl -o /usr/local/bin/youtube-dl && \
+  curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/youtube-dl && \
   chmod a+rx /usr/local/bin/youtube-dl
 
 # Add surbot
