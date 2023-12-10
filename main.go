@@ -30,7 +30,7 @@ func main() {
 	if err := viper.ReadInConfig(); err != nil {
 		fmt.Printf("could not read config, %v", err.Error())
 	}
-	if err := viper.Unmarshal(&EnvConfigs); err != nil {
+	if err := viper.Unmarshal(EnvConfigs); err != nil {
 		fmt.Printf("could not read envs, %v", err.Error())
 	}
 	flag.StringVar(&Prefix, "p", "!", "Bot Prefix")
