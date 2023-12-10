@@ -1,11 +1,11 @@
 module gitlab.com/sajfer/surbot
 
-go 1.21.5
+go 1.21
 
 require (
 	github.com/bwmarrin/discordgo v0.27.1
 	github.com/kkdai/youtube/v2 v2.9.0
-	github.com/sajfer/dca v0.0.0-20231210141349-c0e84e59e8e4
+	github.com/sajfer/dca v1.0.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.18.1
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
