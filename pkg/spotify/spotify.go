@@ -69,11 +69,11 @@ func (c *Client) Search(url string) (*Playlist, error) {
 
 	id := utils.GetSpotifyID(url)
 
-	if utils.IsSpotifyTrackUrl(url) {
+	if utils.IsSpotifyTrackURL(url) {
 		return c.GetTrack(id)
-	} else if utils.IsSpotifyAlbumUrl(url) {
+	} else if utils.IsSpotifyAlbumURL(url) {
 		return c.GetAlbum(id)
-	} else if utils.IsSpotifyPlaylistUrl(url) {
+	} else if utils.IsSpotifyPlaylistURL(url) {
 		return c.GetPlaylist(id)
 	}
 	return &Playlist{}, nil
