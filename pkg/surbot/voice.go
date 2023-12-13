@@ -52,7 +52,11 @@ func (voice *Voice) Connect(channelId, guildId string, mute, deaf bool) error {
 	}
 	vc, err := voice.Session.ChannelVoiceJoin(guildId, channelId, mute, deaf)
 	if err != nil {
-		return err
+		if _, ok := voice.Session.VoiceConnections[guildId]; ok {
+			vc = voice.Session.VoiceConnections[guildId]
+		} else {
+			return err
+		}
 	}
 	voice.VoiceChannel = vc
 	voice.voiceChannelID = channelId
