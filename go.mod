@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/bwmarrin/discordgo v0.27.1
-	github.com/kkdai/youtube/v2 v2.9.0
+	github.com/kkdai/youtube/v2 v2.10.0
 	github.com/sajfer/dca v1.0.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.18.1
