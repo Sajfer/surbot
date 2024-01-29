@@ -9,7 +9,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.18.2
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
-	github.com/zmb3/spotify/v2 v2.4.0
+	github.com/zmb3/spotify/v2 v2.4.1
 	golang.org/x/oauth2 v0.16.0
 	google.golang.org/api v0.159.0
 )
