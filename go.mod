@@ -11,7 +11,7 @@ require (
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	github.com/zmb3/spotify/v2 v2.4.1
 	golang.org/x/oauth2 v0.17.0
-	google.golang.org/api v0.164.0
+	google.golang.org/api v0.165.0
 )
 
 require (
