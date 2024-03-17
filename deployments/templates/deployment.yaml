@@ -36,22 +36,22 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-          - name: TOKEN
+          - name: SUR_TOKEN
             valueFrom:
               secretKeyRef:
                 name: {{ include "surbot.fullname" . }}-secrets
                 key: DiscordToken
-          - name: YOUTUBE_API
+          - name: SUR_YOUTUBE_API
             valueFrom:
               secretKeyRef:
                 name: {{ include "surbot.fullname" . }}-secrets
                 key: YoutubeApiToken
-          - name: SPOTIFY_CLIENTID
+          - name: SUR_SPOTIFY_CLIENTID
             valueFrom:
               secretKeyRef:
                 name: {{ include "surbot.fullname" . }}-secrets
                 key: SpotifyClientId
-          - name: SPOTIFY_CLIENTSECRET
+          - name: SUR_SPOTIFY_CLIENTSECRET
             valueFrom:
               secretKeyRef:
                 name: {{ include "surbot.fullname" . }}-secrets
