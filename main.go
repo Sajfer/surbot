@@ -4,6 +4,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/spf13/viper"
 
@@ -23,20 +24,53 @@ var (
 	EnvConfigs *envConfig
 )
 
+func readFromEnvFile() {
+	viper.SetConfigFile(".env")
+	viper.SetConfigType("env")
+	viper.AddConfigPath(".")
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Printf("could not read config, %v\n", err.Error())
+	}
+}
+
+func readEnv(envConfig *envConfig) {
+	viper.SetEnvPrefix("sur")
+	viper.AutomaticEnv()
+	err := viper.BindEnv("token")
+	if err != nil {
+		fmt.Printf("could not bind variable, %v\n", err.Error())
+	}
+	err = viper.BindEnv("youtube_api")
+	if err != nil {
+		fmt.Printf("could not bind variable, %v\n", err.Error())
+	}
+	err = viper.BindEnv("spotify_clientid")
+	if err != nil {
+		fmt.Printf("could not bind variable, %v\n", err.Error())
+	}
+	err = viper.BindEnv("spotify_clientsecret")
+	if err != nil {
+		fmt.Printf("could not bind variable, %v\n", err.Error())
+	}
+	envConfig.Token = viper.GetString("token")
+	envConfig.YoutubeAPI = viper.GetString("youtube_api")
+	envConfig.SpotifyClientID = viper.GetString("spotify_clientid")
+	envConfig.SpotifyClientSecret = viper.GetString("spotify_clientsecret")
+}
+
 func main() {
 	EnvConfigs = new(envConfig)
-	viper.SetConfigFile(".env")
-	viper.AutomaticEnv()
-	if err := viper.ReadInConfig(); err != nil {
-		fmt.Printf("could not read config, %v", err.Error())
-	}
-	if err := viper.Unmarshal(EnvConfigs); err != nil {
-		fmt.Printf("could not read envs, %v", err.Error())
+	if _, err := os.Stat(".env"); err == nil {
+		readFromEnvFile()
+		if err := viper.Unmarshal(EnvConfigs); err != nil {
+			fmt.Printf("could not read envs, %v\n", err.Error())
+		}
+	} else {
+		readEnv(EnvConfigs)
 	}
 	flag.StringVar(&Prefix, "p", "!", "Bot Prefix")
 	flag.Parse()
-
-	fmt.Printf("token: %v", EnvConfigs.Token)
+	fmt.Printf("token: %v\n", EnvConfigs.Token)
 	bot := surbot.NewSurbot(EnvConfigs.Token, EnvConfigs.YoutubeAPI, EnvConfigs.SpotifyClientID, EnvConfigs.SpotifyClientSecret, Prefix)
 	bot.StartServer()
 }
