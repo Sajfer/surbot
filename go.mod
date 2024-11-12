@@ -11,11 +11,11 @@ require (
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	github.com/zmb3/spotify/v2 v2.4.2
 	golang.org/x/oauth2 v0.23.0
-	google.golang.org/api v0.204.0
+	google.golang.org/api v0.205.0
 )
 
 require (
-	cloud.google.com/go/auth v0.10.0 // indirect
+	cloud.google.com/go/auth v0.10.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.5 // indirect
 	cloud.google.com/go/compute/metadata v0.5.2 // indirect
 	github.com/bitly/go-simplejson v0.5.1 // indirect
