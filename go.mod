@@ -11,13 +11,13 @@ require (
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	github.com/zmb3/spotify/v2 v2.4.3
 	golang.org/x/oauth2 v0.24.0
-	google.golang.org/api v0.211.0
+	google.golang.org/api v0.214.0
 )
 
 require (
-	cloud.google.com/go/auth v0.12.1 // indirect
+	cloud.google.com/go/auth v0.13.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.6 // indirect
-	cloud.google.com/go/compute/metadata v0.5.2 // indirect
+	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	github.com/bitly/go-simplejson v0.5.1 // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect
 	github.com/dop251/goja v0.0.0-20240220182346-e401ed450204 // indirect
@@ -56,11 +56,11 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225 // indirect
-	golang.org/x/net v0.32.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241206012308-a4fef0638583 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20241209162323-e6fa225c2576 // indirect
 	google.golang.org/grpc v1.67.1 // indirect
 	google.golang.org/protobuf v1.35.2 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
