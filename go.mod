@@ -9,7 +9,7 @@ require (
 	github.com/kkdai/youtube/v2 v2.10.3
 	github.com/sajfer/dca v1.0.1
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/viper v1.20.0
+	github.com/spf13/viper v1.20.1
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	github.com/zmb3/spotify/v2 v2.4.3
 	golang.org/x/oauth2 v0.26.0
