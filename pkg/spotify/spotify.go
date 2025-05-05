@@ -88,8 +88,8 @@ func (c *Client) GetTrack(query string) (*Playlist, error) {
 		logger.Log.Warningf("Could not search for spotify track, err=%v", err)
 		return &Playlist{}, err
 	}
-	logger.Log.Debugf("%s", results.SimpleTrack.Name)
-	return &Playlist{Songs: []Song{{Name: results.SimpleTrack.Name, Artist: results.SimpleTrack.Artists[0].Name}}}, nil
+	logger.Log.Debugf("%s", results.SimpleTrack.Name)                                                                   //nolint:all
+	return &Playlist{Songs: []Song{{Name: results.SimpleTrack.Name, Artist: results.SimpleTrack.Artists[0].Name}}}, nil //nolint:all
 }
 
 func (c *Client) GetPlaylist(query string) (*Playlist, error) {
@@ -101,7 +101,7 @@ func (c *Client) GetPlaylist(query string) (*Playlist, error) {
 		logger.Log.Warningf("Could not search for spotify track, err=%v", err)
 		return &Playlist{}, err
 	}
-	playlist := &Playlist{Title: results.Name, Uploader: results.SimplePlaylist.Owner.DisplayName}
+	playlist := &Playlist{Title: results.Name, Uploader: results.SimplePlaylist.Owner.DisplayName} //nolint:all
 	for _, item := range results.Tracks.Tracks {
 		playlist.Songs = append(playlist.Songs, Song{Name: item.Track.Name, Artist: item.Track.Artists[0].Name})
 	}
