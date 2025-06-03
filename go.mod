@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.24.2
 
 require (
-	github.com/bwmarrin/discordgo v0.28.1
+	github.com/bwmarrin/discordgo v0.29.0
 	github.com/kkdai/youtube/v2 v2.10.4
 	github.com/sajfer/dca v1.0.1
 	github.com/sirupsen/logrus v1.9.3
