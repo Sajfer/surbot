@@ -10,29 +10,29 @@ import (
 	"gitlab.com/sajfer/surbot/pkg/youtube"
 )
 
-type MusicClients struct {
+type Clients struct {
 	Youtube *youtube.Youtube
 	Spotify *spotifyClient.Client
 }
 
-func NewMusicClients(youtubeAPI, spotifyClientID, spotifyClientSecret string) *MusicClients {
-	music := &MusicClients{}
+func NewClients(youtubeAPI, spotifyClientID, spotifyClientSecret string) *Clients {
+	music := &Clients{}
 	music.Youtube = youtube.NewYoutube(youtubeAPI)
 	music.Spotify = spotifyClient.NewSpotifyClient(spotifyClientID, spotifyClientSecret)
 	return music
 }
 
-func (m *MusicClients) FetchSong(query string) (*Playlist, error) {
+func (m *Clients) FetchSong(query string) (*Playlist, error) {
 	logger.Log.Debug("music.FetchSong")
 
-	if utils.IsYoutubeUrl(query) {
+	if utils.IsYoutubeURL(query) {
 		playlist, err := m.fetchYoutubeSong(query)
 		if err != nil {
 			logger.Log.Warningf("Could not fetch youtube songs, err=%v", err)
 			return nil, err
 		}
 		return playlist, nil
-	} else if utils.IsSpotifyUrl(query) {
+	} else if utils.IsSpotifyURL(query) {
 		playlist, err := m.fetchSpotifySong(query)
 		if err != nil {
 			logger.Log.Warningf("Could not fetch spotify songs, err=%v", err)
@@ -58,7 +58,7 @@ func (m *MusicClients) FetchSong(query string) (*Playlist, error) {
 	return &playlist, nil
 }
 
-func (m *MusicClients) fetchSpotifySong(query string) (*Playlist, error) {
+func (m *Clients) fetchSpotifySong(query string) (*Playlist, error) {
 	logger.Log.Debug("music.fetchSpotifySong")
 	songs, err := m.Spotify.Search(query)
 	if err != nil {
@@ -91,7 +91,7 @@ func (m *MusicClients) fetchSpotifySong(query string) (*Playlist, error) {
 	return playlist, nil
 }
 
-func (m *MusicClients) fetchYoutubeSong(query string) (*Playlist, error) {
+func (m *Clients) fetchYoutubeSong(query string) (*Playlist, error) {
 	logger.Log.Debug("music.fetchYoutubeSong")
 
 	video, err := m.Youtube.GetVideoInfo(query)

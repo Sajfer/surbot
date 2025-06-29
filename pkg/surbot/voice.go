@@ -44,13 +44,13 @@ func (voice *Voice) SetSession(session *discordgo.Session) {
 	voice.Session = session
 }
 
-func (voice *Voice) Connect(channelId, guildId string, mute, deaf bool) error {
+func (voice *Voice) Connect(channelID, guildID string, mute, deaf bool) error {
 	logger.Log.Debug("voice.Connect")
 
-	if channelId == "" {
+	if channelID == "" {
 		return errors.New("user not in a channel")
 	}
-	vc, err := voice.Session.ChannelVoiceJoin(guildId, channelId, mute, deaf)
+	vc, err := voice.Session.ChannelVoiceJoin(guildID, channelID, mute, deaf)
 	if err != nil {
 		if _, ok := voice.Session.VoiceConnections[guildId]; ok {
 			vc = voice.Session.VoiceConnections[guildId]
@@ -59,8 +59,8 @@ func (voice *Voice) Connect(channelId, guildId string, mute, deaf bool) error {
 		}
 	}
 	voice.VoiceChannel = vc
-	voice.voiceChannelID = channelId
-	voice.voiceGuildID = guildId
+	voice.voiceChannelID = channelID
+	voice.voiceGuildID = guildID
 	return nil
 }
 
@@ -107,15 +107,15 @@ func (voice *Voice) Start(m *discordgo.MessageCreate) error {
 		if err != nil {
 			return err
 		}
-		channelId := ""
+		channelID := ""
 		for _, person := range guild.VoiceStates {
 			if person.UserID == m.Author.ID {
 				logger.Log.Debugf("Voice channel: %s", person.ChannelID)
-				channelId = person.ChannelID
+				channelID = person.ChannelID
 				break
 			}
 		}
-		err = voice.Connect(channelId, m.GuildID, false, true)
+		err = voice.Connect(channelID, m.GuildID, false, true)
 		if err != nil {
 			logger.Log.Warningf("could not join voice channel, err=%s", err)
 			return err
@@ -199,9 +199,7 @@ func (voice *Voice) play() error {
 			return err
 		}
 	}
-	if len(voice.music.Queue) > 0 {
-		return voice.play()
-	} else {
+	if len(voice.music.Queue) == 0 {
 		err := voice.Session.UpdateListeningStatus("")
 		if err != nil {
 			return err
@@ -210,6 +208,7 @@ func (voice *Voice) play() error {
 		go voice.timer.initTimer(time.Duration(timeout)*time.Minute, *voice)
 		return nil
 	}
+	return voice.play()
 }
 
 func (voice *Voice) playRaw(song music.Song) (error, error) {
@@ -323,9 +322,6 @@ func (voice *Voice) NowPlaying() {
 func (voice *Voice) Skip() error {
 	voice.done <- errVoiceSkippedManually
 
-	if err := voice.EncodingSession.Stop(); err != nil {
-		return err
-	}
-
-	return nil
+	err := voice.EncodingSession.Stop()
+	return err
 }
