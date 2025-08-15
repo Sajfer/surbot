@@ -13,17 +13,17 @@ func setupLogger() *logrus.Logger {
 	logger := logrus.New()
 	logger.SetLevel(logrus.InfoLevel)
 
-	prefix_formatter := &prefixed.TextFormatter{
+	prefixFormatter := &prefixed.TextFormatter{
 		TimestampFormat: "2006-01-02 15:04:05",
 		FullTimestamp:   true,
 		ForceFormatting: true,
 	}
 
-	prefix_formatter.SetColorScheme(&prefixed.ColorScheme{
+	prefixFormatter.SetColorScheme(&prefixed.ColorScheme{
 		PrefixStyle:    "blue+b",
 		TimestampStyle: "white",
 	})
 
-	logger.Formatter = prefix_formatter
+	logger.Formatter = prefixFormatter
 	return logger
 }
