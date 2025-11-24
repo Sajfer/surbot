@@ -6,7 +6,7 @@ toolchain go1.24.2
 
 require (
 	github.com/bwmarrin/discordgo v0.29.0
-	github.com/kkdai/youtube/v2 v2.10.4
+	github.com/kkdai/youtube/v2 v2.10.5
 	github.com/sajfer/dca v1.0.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.21.0
