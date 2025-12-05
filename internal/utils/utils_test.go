@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/sajfer/discordgo"
 )
 
 func TestPrintHelp(t *testing.T) {

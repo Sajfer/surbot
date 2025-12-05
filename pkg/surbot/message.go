@@ -4,7 +4,7 @@ package surbot
 import (
 	"fmt"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/sajfer/discordgo"
 )
 
 type Embed struct {

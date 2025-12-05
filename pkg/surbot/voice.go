@@ -7,8 +7,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/sajfer/dca"
+	"github.com/sajfer/discordgo"
 	"gitlab.com/sajfer/surbot/internal/logger"
 	"gitlab.com/sajfer/surbot/internal/utils"
 	"gitlab.com/sajfer/surbot/pkg/music"
