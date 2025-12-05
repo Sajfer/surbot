@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/sajfer/discordgo"
 )
 
 type chuckResponse struct {

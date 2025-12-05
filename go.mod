@@ -5,9 +5,9 @@ go 1.24.0
 toolchain go1.24.2
 
 require (
-	github.com/bwmarrin/discordgo v0.29.0
 	github.com/kkdai/youtube/v2 v2.10.5
-	github.com/sajfer/dca v1.0.1
+	github.com/sajfer/dca v1.0.3
+	github.com/sajfer/discordgo v0.29.2
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.21.0
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
@@ -21,6 +21,7 @@ require (
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	github.com/bitly/go-simplejson v0.5.1 // indirect
+	github.com/bwmarrin/discordgo v0.27.1 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/dop251/goja v0.0.0-20250125213203-5ef83b82af17 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect

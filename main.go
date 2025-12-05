@@ -25,6 +25,7 @@ var (
 )
 
 func readFromEnvFile() {
+	fmt.Println("Reading .env file")
 	viper.SetConfigFile(".env")
 	viper.SetConfigType("env")
 	viper.AddConfigPath(".")

@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/sajfer/discordgo"
 	"gitlab.com/sajfer/surbot/internal/logger"
 	"gitlab.com/sajfer/surbot/internal/utils"
 	"gitlab.com/sajfer/surbot/pkg/music"
