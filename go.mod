@@ -1,8 +1,6 @@
 module gitlab.com/sajfer/surbot
 
-go 1.24.0
-
-toolchain go1.24.2
+go 1.25.0
 
 require (
 	github.com/kkdai/youtube/v2 v2.10.5
@@ -12,7 +10,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	github.com/zmb3/spotify/v2 v2.4.3
-	golang.org/x/oauth2 v0.35.0
+	golang.org/x/oauth2 v0.36.0
 	google.golang.org/api v0.267.0
 )
 
