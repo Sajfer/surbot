@@ -21,7 +21,7 @@ import (
 type Surbot struct {
 	token        string
 	prefix       string
-	musicClients *music.MusicClients
+	musicClients *music.Clients
 	servers      []*Server
 }
 
@@ -33,7 +33,7 @@ type Server struct {
 // NewSurbot return an instance of surbot
 func NewSurbot(token, youtubeAPI, clientID, clientSecret, prefix string) Surbot {
 	logger.Log.Debug("NewSurbot")
-	musicClients := music.NewMusicClients(youtubeAPI, clientID, clientSecret)
+	musicClients := music.NewClients(youtubeAPI, clientID, clientSecret)
 	return Surbot{token: token, prefix: prefix, musicClients: musicClients}
 }
 
