@@ -1,6 +1,9 @@
-.PHONY: all lint build test run clean
+.PHONY: all install-deps lint build test run clean
 
-all: lint test build
+all: install-deps lint test build
+
+install-deps:
+	go install github.com/mgechev/revive@latest
 
 lint:
 	go fmt ./...
