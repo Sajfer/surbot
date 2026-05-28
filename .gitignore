@@ -11,3 +11,5 @@ vendor/
 
 out/
 bin/
+
+.smallcode/

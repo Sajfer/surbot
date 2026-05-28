@@ -44,12 +44,12 @@ func NewYoutube(key string) *Youtube {
 }
 
 func (yt *Youtube) SearchVideo(query string) *SearchResult {
-	logger.Log.Info("youtube.SearchVideo")
+	logger.Log.Debug("youtube.SearchVideo")
 	ctx := context.Background()
 
 	service, err := youtube.NewService(ctx, option.WithAPIKey(yt.devKey))
 	if err != nil {
-		print(err)
+		logger.Log.Errorf("failed to create youtube service: %v", err)
 		return nil
 	}
 
@@ -57,12 +57,12 @@ func (yt *Youtube) SearchVideo(query string) *SearchResult {
 
 	response, err := search.Do()
 	if err != nil {
-		logger.Log.Error(err)
+		logger.Log.Errorf("search error: %v", err)
 		return nil
 	}
 
 	for _, item := range response.Items {
-		logger.Log.Info(item.Snippet.Title)
+		logger.Log.Debugf("found video: %s", item.Snippet.Title)
 		switch item.Id.Kind {
 		case "youtube#video":
 			newTitle := utils.FormatVideoTitle(item.Snippet.Title)
@@ -80,18 +80,19 @@ func (yt *Youtube) SearchVideo(query string) *SearchResult {
 }
 
 func (yt *Youtube) GetDurationByID(id string) string {
+	logger.Log.Debug("youtube.GetDurationByID")
 	ctx := context.Background()
 
 	service, err := youtube.NewService(ctx, option.WithAPIKey(yt.devKey))
 	if err != nil {
-		print(err)
+		logger.Log.Errorf("failed to create youtube service: %v", err)
 		return ""
 	}
 
 	search := service.Videos.List([]string{"id,contentDetails"}).Id(id)
 	resp, err := search.Do()
 	if err != nil {
-		logger.Log.Error(err)
+		logger.Log.Errorf("duration lookup error: %v", err)
 	}
 
 	for _, item := range resp.Items {
