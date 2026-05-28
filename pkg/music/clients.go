@@ -62,25 +62,24 @@ func (m *MusicClients) fetchSpotifySong(query string) (*Playlist, error) {
 	logger.Log.Debug("music.fetchSpotifySong")
 	songs, err := m.Spotify.Search(query)
 	if err != nil {
-		logger.Log.Warningf("Could not search for song, err=%v", err)
-		return &Playlist{}, err
+		logger.Log.Warningf("could not search for song: %v", err)
+		return nil, err
 	}
-	playlist := &Playlist{}
-	if songs.Title != "" && songs.Uploader != "" {
-		playlist.Title = songs.Title
-		playlist.Uploader = songs.Uploader
-	}
+
+	// If no songs were found in Spotify search
 	if len(songs.Songs) == 0 {
-		return playlist, fmt.Errorf("did not find any songs")
+		logger.Log.Warning("no songs found in spotify search result")
+		return &Playlist{}, fmt.Errorf("spotify search returned no songs")
 	}
 
 	url := m.Youtube.SearchVideo(fmt.Sprintf("%s - %s", songs.Songs[0].Artist, songs.Songs[0].Name))
 	video, err := m.Youtube.GetVideoInfo(url.Path)
 	if err != nil {
-		logger.Log.Warningf("could not fetch video information for %s, err= %s", url, err)
-		return playlist, fmt.Errorf("failed to fetch song information")
+		logger.Log.Warningf("could not fetch video information for %s: %v", url, err)
+		return nil, fmt.Errorf("failed to fetch song information from youtube")
 	}
 
+	playlist := &Playlist{Title: songs.Title, Uploader: songs.Uploader}
 	playlist.Songs = append(playlist.Songs, &Song{
 		Title:     video.Songs[0].Title,
 		Duration:  video.Songs[0].Duration,

@@ -3,7 +3,6 @@ package surbot
 
 import (
 	"crypto/rand"
-	"log"
 	"math/big"
 	"os"
 	"os/signal"
@@ -265,7 +264,7 @@ func (surbot Surbot) StartServer() {
 	// Cleanly close down the Discord session.
 	err = discord.Close()
 	if err != nil {
-		log.Println("error closing connection,", err)
+		logger.Log.WithError(err).Warning("failed to close connection")
 		return
 	}
 }

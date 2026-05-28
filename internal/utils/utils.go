@@ -4,8 +4,8 @@ package utils
 import (
 	"encoding/json"
 	"io"
-	"log"
 	"math"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"regexp"
@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/sajfer/discordgo"
+	"gitlab.com/sajfer/surbot/internal/logger"
 )
 
 type chuckResponse struct {
@@ -28,7 +29,7 @@ type inner struct {
 }
 
 const (
-	chuckUrl = "http://api.icndb.com/jokes/random"
+	chuckUrl = "https://api.chucknorris.io/jokes/random"
 )
 
 var (
@@ -126,7 +127,7 @@ func GetSpotifyID(url string) string {
 func ParseISO8601(duration string) string {
 	r, err := regexp.Compile(durationRegex)
 	if err != nil {
-		log.Println(err)
+		logger.Log.WithError(err).Warningf("unable to parse duration")
 		return ""
 	}
 
@@ -173,34 +174,54 @@ func FloatToString(input_num float64) string {
 
 // GetChuckJoke return a chuck norris joke
 func GetChuckJoke() string {
-
 	body := GetWebsite(chuckUrl)
+
+	if len(body) == 0 {
+		logger.Log.Warning("could not fetch chuck norris joke from api")
+		return getFallbackJoke()
+	}
 
 	chuckresp := chuckResponse{}
 	err := json.Unmarshal(body, &chuckresp)
 	if err != nil {
-		log.Println("Could not get chuck norris joke,", err)
-		return ""
+		logger.Log.Warningf("could not parse chuck norris response: %v", err)
+		return getFallbackJoke()
+	}
+
+	if chuckresp.Value.Joke == "" {
+		logger.Log.Warning("chuck joke was empty")
+		return getFallbackJoke()
 	}
 
 	return chuckresp.Value.Joke
+}
+
+// getFallbackJoke returns a fallback joke when the API fails
+func getFallbackJoke() string {
+	fallbacks := []string{
+		"Why did the Chuck Norris joke go to therapy? It had too many existential crises.",
+		"Chuck Norris doesn't read jokes. He stares at them until they confess.",
+		"What's Chuck Norris's favorite type of music? Heavy metal, because he can crush it.",
+	}
+	idx := rand.IntN(len(fallbacks)) // #nosec G404
+	return fallbacks[idx]
 }
 
 // GetWebsite returns the content of a website
 func GetWebsite(addr string) []byte {
 	response, err := http.Get(addr) // #nosec G107
 	if err != nil {
-		log.Println("Could not get website,", err)
+		logger.Log.Warningf("could not get website: %v", err)
 		return []byte{}
 	}
 	if response.Status != "200 OK" {
-		log.Println("error status != 200,", response.Status)
+		logger.Log.Errorf("response status: %s", response.Status)
 		return []byte{}
 	}
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		log.Println("Could not read website body,", err)
+		logger.Log.Warningf("could not read website body: %v", err)
 		return []byte{}
 	}
 	//nolint:all
@@ -241,6 +262,6 @@ func PrintHelp(s *discordgo.Session, channel string) {
 			"**queue**: Show the queue of music\n"+
 			"**shuffle**: Shuffle the songs in the queue")
 	if err != nil {
-		log.Println("error sending message,", err)
+		logger.Log.Warningf("error sending message: %v", err)
 	}
 }

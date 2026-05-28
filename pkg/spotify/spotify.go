@@ -3,7 +3,6 @@ package spotifyClient
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/zmb3/spotify/v2"
@@ -48,7 +47,7 @@ func newClient(config *clientcredentials.Config) (*spotify.Client, *oauth2.Token
 	ctx := context.Background()
 	token, err := config.Token(ctx)
 	if err != nil {
-		log.Fatalf("couldn't get token: %v", err)
+		logger.Log.WithError(err).Fatal("failed to retrieve token")
 	}
 
 	httpClient := spotifyauth.New().Client(ctx, token)

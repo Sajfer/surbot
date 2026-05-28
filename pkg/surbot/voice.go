@@ -172,32 +172,17 @@ func (voice *Voice) play() error {
 	voice.NowPlaying()
 	logger.Log.Infof("Now playing: %s - %s", song.Artist, song.Title)
 	msg, err := voice.playRaw(*song)
-	if msg != nil {
-		if msg == errVoiceStoppedManually {
-			voice.Playing = false
-			return voice.stopPlaying()
-		}
-	}
-	if err != nil {
+	if msg == errVoiceStoppedManually {
 		voice.Playing = false
-		switch err {
-		case io.ErrUnexpectedEOF:
-			if msg != errVoiceSkippedManually {
-				return voice.stopPlaying()
-			}
-		case dca.ErrVoiceConnClosed:
-			if msg != errVoiceSkippedManually {
-				_ = voice.Session.UpdateListeningStatus("")
-				voice.music.CurrentSong = nil
-				err := voice.Connect(voice.channelID, voice.VoiceChannel.GuildID, false, true)
-				if err != nil {
-					logger.Log.Warningf("could not join voice channel, err=%s", err)
-					return err
-				}
-			}
-		default:
-			return err
+		return voice.stopPlaying()
+	}
+	if IsVoiceSkipped(err) {
+		_ = voice.Session.UpdateListeningStatus("")
+		voice.music.CurrentSong = nil
+		if len(voice.music.Queue) > 0 {
+			return voice.play()
 		}
+		return nil
 	}
 	if len(voice.music.Queue) > 0 {
 		return voice.play()

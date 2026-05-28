@@ -1,13 +1,13 @@
-// Package main provides the main fuctionality for Surbot.
+// Package main provides the main functionality for Surbot.
 package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 
 	"github.com/spf13/viper"
 
+	"gitlab.com/sajfer/surbot/internal/logger"
 	"gitlab.com/sajfer/surbot/pkg/surbot"
 )
 
@@ -18,60 +18,43 @@ type envConfig struct {
 	SpotifyClientSecret string `mapstructure:"SPOTIFY_CLIENTSECRET"`
 }
 
-// Variables used for command line parameters
-var (
-	Prefix     string
-	EnvConfigs *envConfig
-)
+// readAndInitConfig reads configuration from .env file or environment variables.
+func readAndInitConfig() *envConfig {
+	config := &envConfig{}
 
-func readFromEnvFile() {
-	fmt.Println("Reading .env file")
+	viper.SetEnvPrefix("sur")
+	viper.AutomaticEnv()
 	viper.SetConfigFile(".env")
 	viper.SetConfigType("env")
 	viper.AddConfigPath(".")
-	if err := viper.ReadInConfig(); err != nil {
-		fmt.Printf("could not read config, %v\n", err.Error())
-	}
-}
 
-func readEnv(envConfig *envConfig) {
-	viper.SetEnvPrefix("sur")
-	viper.AutomaticEnv()
-	err := viper.BindEnv("token")
-	if err != nil {
-		fmt.Printf("could not bind variable, %v\n", err.Error())
+	if _, err := os.Stat(".env"); err == nil {
+		logger.Log.Debug("reading configuration from environment and/or .env file")
+		if err := viper.ReadInConfig(); err != nil {
+			logger.Log.Errorf("could not read config: %v", err)
+			os.Exit(1)
+		}
 	}
-	err = viper.BindEnv("youtube_api")
-	if err != nil {
-		fmt.Printf("could not bind variable, %v\n", err.Error())
+
+	if err := viper.Unmarshal(config); err != nil {
+		logger.Log.Errorf("could not parse config: %v", err)
+		os.Exit(1)
 	}
-	err = viper.BindEnv("spotify_clientid")
-	if err != nil {
-		fmt.Printf("could not bind variable, %v\n", err.Error())
-	}
-	err = viper.BindEnv("spotify_clientsecret")
-	if err != nil {
-		fmt.Printf("could not bind variable, %v\n", err.Error())
-	}
-	envConfig.Token = viper.GetString("token")
-	envConfig.YoutubeAPI = viper.GetString("youtube_api")
-	envConfig.SpotifyClientID = viper.GetString("spotify_clientid")
-	envConfig.SpotifyClientSecret = viper.GetString("spotify_clientsecret")
+
+	return config
 }
 
 func main() {
-	EnvConfigs = new(envConfig)
-	if _, err := os.Stat(".env"); err == nil {
-		readFromEnvFile()
-		if err := viper.Unmarshal(EnvConfigs); err != nil {
-			fmt.Printf("could not read envs, %v\n", err.Error())
-		}
-	} else {
-		readEnv(EnvConfigs)
-	}
-	flag.StringVar(&Prefix, "p", "!", "Bot Prefix")
+	envConfigs := readAndInitConfig()
+
+	var (
+		prefix = flag.String("p", "!", "Bot Prefix")
+	)
 	flag.Parse()
-	fmt.Printf("token: %v\n", EnvConfigs.Token)
-	bot := surbot.NewSurbot(EnvConfigs.Token, EnvConfigs.YoutubeAPI, EnvConfigs.SpotifyClientID, EnvConfigs.SpotifyClientSecret, Prefix)
+
+	logger.Log.Infof("Starting Surbot with prefix: %s", *prefix)
+
+	bot := surbot.NewSurbot(envConfigs.Token, envConfigs.YoutubeAPI,
+		envConfigs.SpotifyClientID, envConfigs.SpotifyClientSecret, *prefix)
 	bot.StartServer()
 }
