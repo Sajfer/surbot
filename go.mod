@@ -6,7 +6,7 @@ require (
 	github.com/kkdai/youtube/v2 v2.10.5
 	github.com/sajfer/dca v1.0.3
 	github.com/sajfer/discordgo v0.30.0
-	github.com/sirupsen/logrus v1.9.4
+	github.com/sirupsen/logrus v1.10.0
 	github.com/spf13/viper v1.21.0
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	github.com/zmb3/spotify/v2 v2.4.3
