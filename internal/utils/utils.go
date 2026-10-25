@@ -248,20 +248,3 @@ func GetRole(state *discordgo.State, guildID, roleID string) (string, error) {
 	}
 	return role.Name, nil
 }
-
-// PrintHelp print the avalible command for the bot
-func PrintHelp(s *discordgo.Session, channel string) {
-	_, err := s.ChannelMessageSend(channel,
-		"Avalible commands: \n"+
-			"**help**: Show this command\n"+
-			"**ping**: Respods with pong!\n"+
-			"**version**: Responds with bot version\n"+
-			"**chuck**: Responds with chuck norris joke\n"+
-			"**play**: Play a youtube link\n"+
-			"**stop**: Stop playing music\n"+
-			"**queue**: Show the queue of music\n"+
-			"**shuffle**: Shuffle the songs in the queue")
-	if err != nil {
-		logger.Log.Warningf("error sending message: %v", err)
-	}
-}

@@ -5,11 +5,8 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
-	"os"
-	"os/signal"
-	"runtime/debug"
 	"strings"
-	"syscall"
+	"sync"
 	"time"
 
 	"github.com/sajfer/discordgo"
@@ -20,10 +17,10 @@ import (
 
 // Surbot contains basic information about the bot
 type Surbot struct {
-	token        string
-	prefix       string
 	musicClients *music.MusicClients
-	servers      []*Server
+
+	mu      sync.Mutex // guards servers
+	servers []*Server
 }
 
 type Server struct {
@@ -32,14 +29,16 @@ type Server struct {
 }
 
 // NewSurbot returns an instance of Surbot
-func NewSurbot(token, youtubeAPI, clientID, clientSecret, prefix string) Surbot {
+func NewSurbot(youtubeAPI, clientID, clientSecret string) *Surbot {
 	logger.Log.Debug("NewSurbot")
 	musicClients := music.NewMusicClients(youtubeAPI, clientID, clientSecret)
-	return Surbot{token: token, prefix: prefix, musicClients: musicClients}
+	return &Surbot{musicClients: musicClients}
 }
 
 // checkServer returns the server configuration for current server
 func (surbot *Surbot) checkServer(serverID string) *Server {
+	surbot.mu.Lock()
+	defer surbot.mu.Unlock()
 	for _, t := range surbot.servers {
 		if t.id == serverID {
 			return t
@@ -52,82 +51,52 @@ func (surbot *Surbot) checkServer(serverID string) *Server {
 	return server
 }
 
-// messageReceived handles incoming Discord messages
-func (surbot *Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageCreate) {
-	// A bug in one command must not take the whole bot down.
-	defer func() {
-		if r := recover(); r != nil {
-			logger.Log.Errorf("recovered from panic while handling %q: %v\n%s", m.Content, r, debug.Stack())
-		}
-	}()
-
-	// Ignore all messages created by the bot itself
-	if m.Author.ID == s.State.User.ID {
-		return
-	}
-
-	// Check if message has our prefix
-	if !strings.HasPrefix(m.Content, surbot.prefix) {
-		return
-	}
-
+// HandleCommand runs the named command for a message the caller has already
+// matched against the prefix. Unknown names are ignored.
+func (surbot *Surbot) HandleCommand(s *discordgo.Session, m *discordgo.MessageCreate, name, args string) {
 	server := surbot.checkServer(m.GuildID)
+	voice := server.voice
 	// Ensure the voice has a reference to the Discord session.
-	server.voice.SetSession(s)
+	voice.SetSession(s)
 	// Replies like "Now playing" go to the channel of the latest command.
-	server.voice.SetTextChannel(m.ChannelID)
-	command := strings.TrimPrefix(m.Content, surbot.prefix)
+	voice.SetTextChannel(m.ChannelID)
+	channelID := m.ChannelID
 
-	surbot.dispatchCommand(s, m.ChannelID, server.voice, m, command)
+	switch name {
+	case "ping":
+		surbot.HandlePing(voice, s, channelID)
+	case "chuck":
+		surbot.send(s, channelID, "chuck", surbot.HandleChuck(voice, s, channelID))
+	case "playing":
+		surbot.HandlePlayingStatus(voice, s)
+	case "shuffle":
+		surbot.HandleShuffle(voice)
+	case "play":
+		surbot.send(s, channelID, "play", surbot.HandlePlay(voice, s, channelID, m, args))
+	case "stop":
+		surbot.HandleStop(voice)
+	case "queue":
+		surbot.send(s, channelID, "queue", surbot.HandleQueue(voice))
+	case "skip":
+		surbot.HandleSkip(voice)
+	case "disconnect":
+		surbot.HandleDisconnect(voice)
+	case "clearQueue":
+		surbot.HandleClearQueue(voice)
+	case "rajd":
+		surbot.HandleRajd(s, channelID, voice)
+	case "roll":
+		surbot.send(s, channelID, "roll", surbot.HandleRoll(voice, s, channelID, args))
+	}
 }
 
-// dispatchCommand routes the command to its appropriate handler and sends responses
-// All handlers return either a message string (empty = no response needed) or error.
-func (surbot *Surbot) dispatchCommand(s *discordgo.Session, channelID string, voice *Voice, m *discordgo.MessageCreate, command string) {
-	switch {
-	case command == "ping":
-		surbot.HandlePing(voice, s, channelID)
-	case command == "help":
-		surbot.HandleHelp()
-	case command == "chuck":
-		message := surbot.HandleChuck(voice, s, channelID)
-		if message != "" {
-			logger.Log.Debug("sending chuck response:", message)
-			_, _ = s.ChannelMessageSend(channelID, message)
-		}
-	case command == "playing":
-		surbot.HandlePlayingStatus(voice, s)
-	case command == "shuffle":
-		surbot.HandleShuffle(voice)
-	case strings.HasPrefix(command, "play"):
-		message := surbot.HandlePlay(voice, s, channelID, m, command)
-		if message != "" {
-			logger.Log.Debug("sending play response:", message)
-			_, _ = s.ChannelMessageSend(channelID, message)
-		}
-	case command == "stop":
-		surbot.HandleStop(voice)
-	case command == "queue":
-		message := surbot.HandleQueue(voice)
-		if message != "" {
-			logger.Log.Debug("sending queue response:", message)
-			_, _ = s.ChannelMessageSend(channelID, message)
-		}
-	case command == "skip":
-		surbot.HandleSkip(voice)
-	case command == "disconnect":
-		surbot.HandleDisconnect(voice)
-	case command == "clearQueue":
-		surbot.HandleClearQueue(voice)
-	case command == "rajd":
-		surbot.HandleRajd(s, channelID, voice)
-	case strings.HasPrefix(command, "roll"):
-		message := surbot.HandleRoll(voice, s, channelID, command)
-		if message != "" {
-			logger.Log.Debug("sending roll response:", message)
-			_, _ = s.ChannelMessageSend(channelID, message)
-		}
+// send posts a handler's response; an empty message means nothing to say.
+func (surbot *Surbot) send(s *discordgo.Session, channelID, command, message string) {
+	if message == "" {
+		return
 	}
+	logger.Log.Debugf("sending %s response: %s", command, message)
+	_, _ = s.ChannelMessageSend(channelID, message)
 }
 
 // HandlePing returns the pong message
@@ -135,12 +104,6 @@ func (surbot *Surbot) HandlePing(voice *Voice, s *discordgo.Session, channelID s
 	logger.Log.Debug("handling ping command")
 	message := "Pong!"
 	_, _ = s.ChannelMessageSend(channelID, message)
-}
-
-// HandleHelp shows the help menu to users
-func (surbot *Surbot) HandleHelp() {
-	logger.Log.Debug("showing help command")
-	utils.PrintHelp(nil, "")
 }
 
 // HandleChuck returns a Chuck Norris joke
@@ -164,10 +127,9 @@ func (surbot *Surbot) HandleShuffle(voice *Voice) {
 }
 
 // HandlePlay fetches song and adds to queue, returns error message if failed
-func (surbot *Surbot) HandlePlay(voice *Voice, s *discordgo.Session, channelID string, m *discordgo.MessageCreate, command string) string {
+func (surbot *Surbot) HandlePlay(voice *Voice, s *discordgo.Session, channelID string, m *discordgo.MessageCreate, query string) string {
 	logger.Log.Debug("handling play command")
 
-	query := strings.TrimPrefix(command, "play")
 	query = strings.ReplaceAll(query, " ", "")
 
 	playlist, err := surbot.musicClients.FetchSong(query)
@@ -281,11 +243,8 @@ func (surbot *Surbot) HandleRajd(s *discordgo.Session, channelID string, voice *
 }
 
 // HandleRoll rolls dice of specified type (d6, d10, d20, or d100) and returns the result
-func (surbot *Surbot) HandleRoll(voice *Voice, s *discordgo.Session, channelID string, command string) string {
+func (surbot *Surbot) HandleRoll(voice *Voice, s *discordgo.Session, channelID string, diceType string) string {
 	logger.Log.Debug("handling roll command")
-
-	// Parse die type from command (e.g., "d6", "d20")
-	diceType := strings.TrimPrefix(command, "roll")
 
 	switch diceType {
 	case "d6":
@@ -319,37 +278,5 @@ func (surbot *Surbot) HandleRoll(voice *Voice, s *discordgo.Session, channelID s
 	default:
 		logger.Log.Warningf("unknown die type: %s", diceType)
 		return "!roll d6 or !roll d20"
-	}
-}
-
-// StartServer starts the Discord bot
-func (surbot Surbot) StartServer() {
-	discord, err := discordgo.New("Bot " + surbot.token)
-	if err != nil {
-		logger.Log.WithError(err).Fatal("failed to create Discord session")
-		return
-	}
-
-	// Register the messageCreate handler
-	discord.AddHandler(surbot.messageReceived)
-
-	// Open a websocket connection to Discord and begin listening
-	err = discord.Open()
-	if err != nil {
-		logger.Log.WithError(err).Fatal("failed to open Discord connection")
-		return
-	}
-
-	// Wait here until CTRL-C or other term signal is received
-	logger.Log.Info("Bot is now running. Press CTRL-C to exit.")
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-	<-sc
-
-	// Cleanly close down the Discord session
-	err = discord.Close()
-	if err != nil {
-		logger.Log.WithError(err).Warning("failed to close connection")
-		return
 	}
 }
