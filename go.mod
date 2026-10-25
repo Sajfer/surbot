@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/kkdai/youtube/v2 v2.10.5
-	github.com/sajfer/dca v1.0.4-0.20261025110835-61ab10481af0
+	github.com/sajfer/dca v1.0.4
 	github.com/sajfer/discordgo v0.30.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/viper v1.21.0
