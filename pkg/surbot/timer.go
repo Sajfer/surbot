@@ -13,7 +13,7 @@ type Timer struct {
 	stop    chan bool
 }
 
-func (timer *Timer) initTimer(timeout time.Duration, voice Voice) {
+func (timer *Timer) initTimer(timeout time.Duration, voice *Voice) {
 	logger.Log.Debug("timer.initTimer")
 	timer.running = true
 	timer.timer = *time.NewTimer(time.Duration(timeout))

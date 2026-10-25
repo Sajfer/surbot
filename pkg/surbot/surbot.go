@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strings"
 	"syscall"
 	"time"
@@ -53,6 +54,13 @@ func (surbot *Surbot) checkServer(serverID string) *Server {
 
 // messageReceived handles incoming Discord messages
 func (surbot *Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageCreate) {
+	// A bug in one command must not take the whole bot down.
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Log.Errorf("recovered from panic while handling %q: %v\n%s", m.Content, r, debug.Stack())
+		}
+	}()
+
 	// Ignore all messages created by the bot itself
 	if m.Author.ID == s.State.User.ID {
 		return
@@ -64,14 +72,18 @@ func (surbot *Surbot) messageReceived(s *discordgo.Session, m *discordgo.Message
 	}
 
 	server := surbot.checkServer(m.GuildID)
+	// Ensure the voice has a reference to the Discord session.
+	server.voice.SetSession(s)
+	// Replies like "Now playing" go to the channel of the latest command.
+	server.voice.SetTextChannel(m.ChannelID)
 	command := strings.TrimPrefix(m.Content, surbot.prefix)
 
-	surbot.dispatchCommand(s, m.ChannelID, *server.voice, command)
+	surbot.dispatchCommand(s, m.ChannelID, server.voice, m, command)
 }
 
 // dispatchCommand routes the command to its appropriate handler and sends responses
 // All handlers return either a message string (empty = no response needed) or error.
-func (surbot *Surbot) dispatchCommand(s *discordgo.Session, channelID string, voice Voice, command string) {
+func (surbot *Surbot) dispatchCommand(s *discordgo.Session, channelID string, voice *Voice, m *discordgo.MessageCreate, command string) {
 	switch {
 	case command == "ping":
 		surbot.HandlePing(voice, s, channelID)
@@ -88,7 +100,7 @@ func (surbot *Surbot) dispatchCommand(s *discordgo.Session, channelID string, vo
 	case command == "shuffle":
 		surbot.HandleShuffle(voice)
 	case strings.HasPrefix(command, "play"):
-		message := surbot.HandlePlay(voice, s, channelID, command)
+		message := surbot.HandlePlay(voice, s, channelID, m, command)
 		if message != "" {
 			logger.Log.Debug("sending play response:", message)
 			_, _ = s.ChannelMessageSend(channelID, message)
@@ -119,7 +131,7 @@ func (surbot *Surbot) dispatchCommand(s *discordgo.Session, channelID string, vo
 }
 
 // HandlePing returns the pong message
-func (surbot *Surbot) HandlePing(voice Voice, s *discordgo.Session, channelID string) {
+func (surbot *Surbot) HandlePing(voice *Voice, s *discordgo.Session, channelID string) {
 	logger.Log.Debug("handling ping command")
 	message := "Pong!"
 	_, _ = s.ChannelMessageSend(channelID, message)
@@ -132,13 +144,13 @@ func (surbot *Surbot) HandleHelp() {
 }
 
 // HandleChuck returns a Chuck Norris joke
-func (surbot *Surbot) HandleChuck(voice Voice, s *discordgo.Session, channelID string) string {
+func (surbot *Surbot) HandleChuck(voice *Voice, s *discordgo.Session, channelID string) string {
 	logger.Log.Debug("handling chuck command")
 	return utils.GetChuckJoke()
 }
 
 // HandlePlayingStatus checks and displays playing status
-func (surbot *Surbot) HandlePlayingStatus(voice Voice, s *discordgo.Session) {
+func (surbot *Surbot) HandlePlayingStatus(voice *Voice, s *discordgo.Session) {
 	logger.Log.Debug("checking playing status")
 	// voice.channelID already set when connected to channel
 	voice.SetSession(s)
@@ -146,13 +158,13 @@ func (surbot *Surbot) HandlePlayingStatus(voice Voice, s *discordgo.Session) {
 }
 
 // HandleShuffle shuffles the music queue
-func (surbot *Surbot) HandleShuffle(voice Voice) {
+func (surbot *Surbot) HandleShuffle(voice *Voice) {
 	logger.Log.Debug("shuffling queue")
 	voice.music.Shuffle()
 }
 
 // HandlePlay fetches song and adds to queue, returns error message if failed
-func (surbot *Surbot) HandlePlay(voice Voice, s *discordgo.Session, channelID string, command string) string {
+func (surbot *Surbot) HandlePlay(voice *Voice, s *discordgo.Session, channelID string, m *discordgo.MessageCreate, command string) string {
 	logger.Log.Debug("handling play command")
 
 	query := strings.TrimPrefix(command, "play")
@@ -168,7 +180,7 @@ func (surbot *Surbot) HandlePlay(voice Voice, s *discordgo.Session, channelID st
 		return "Failed to add songs to playlist"
 	}
 
-	err = voice.Start(&discordgo.MessageCreate{})
+	err = voice.Start(m)
 	if err != nil {
 		return "Failed to play song"
 	}
@@ -177,7 +189,7 @@ func (surbot *Surbot) HandlePlay(voice Voice, s *discordgo.Session, channelID st
 }
 
 // HandleStop stops the current playback
-func (surbot *Surbot) HandleStop(voice Voice) {
+func (surbot *Surbot) HandleStop(voice *Voice) {
 	logger.Log.Debug("stopping music")
 	err := voice.Stop()
 	if err != nil {
@@ -186,7 +198,7 @@ func (surbot *Surbot) HandleStop(voice Voice) {
 }
 
 // HandleQueue displays the current queue and returns formatted message
-func (surbot *Surbot) HandleQueue(voice Voice) string {
+func (surbot *Surbot) HandleQueue(voice *Voice) string {
 	logger.Log.Debug("showing queue")
 
 	songList := ""
@@ -211,7 +223,7 @@ func (surbot *Surbot) HandleQueue(voice Voice) string {
 }
 
 // HandleSkip skips the current song
-func (surbot *Surbot) HandleSkip(voice Voice) {
+func (surbot *Surbot) HandleSkip(voice *Voice) {
 	logger.Log.Debug("skipping song")
 	err := voice.Skip()
 	if err != nil {
@@ -220,7 +232,7 @@ func (surbot *Surbot) HandleSkip(voice Voice) {
 }
 
 // HandleDisconnect disconnects from voice channel
-func (surbot *Surbot) HandleDisconnect(voice Voice) {
+func (surbot *Surbot) HandleDisconnect(voice *Voice) {
 	logger.Log.Debug("disconnecting from voice channel")
 	err := voice.Disconnect()
 	if err != nil {
@@ -229,7 +241,7 @@ func (surbot *Surbot) HandleDisconnect(voice Voice) {
 }
 
 // HandleClearQueue clears the music queue
-func (surbot *Surbot) HandleClearQueue(voice Voice) {
+func (surbot *Surbot) HandleClearQueue(voice *Voice) {
 	logger.Log.Debug("clearing queue")
 	voice.music.Queue = nil
 	err := voice.ClearQueue()
@@ -239,7 +251,7 @@ func (surbot *Surbot) HandleClearQueue(voice Voice) {
 }
 
 // HandleRajd posts the current date and reactions in Rajda channel (Wednesdays only)
-func (surbot *Surbot) HandleRajd(s *discordgo.Session, channelID string, voice Voice) {
+func (surbot *Surbot) HandleRajd(s *discordgo.Session, channelID string, voice *Voice) {
 	logger.Log.Debug("posting rajda message")
 
 	currentTime := time.Now()
@@ -269,7 +281,7 @@ func (surbot *Surbot) HandleRajd(s *discordgo.Session, channelID string, voice V
 }
 
 // HandleRoll rolls dice of specified type (d6, d10, d20, or d100) and returns the result
-func (surbot *Surbot) HandleRoll(voice Voice, s *discordgo.Session, channelID string, command string) string {
+func (surbot *Surbot) HandleRoll(voice *Voice, s *discordgo.Session, channelID string, command string) string {
 	logger.Log.Debug("handling roll command")
 
 	// Parse die type from command (e.g., "d6", "d20")
