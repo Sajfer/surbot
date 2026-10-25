@@ -56,7 +56,7 @@ func (g *fakeGateway) Close() error {
 
 func (g *fakeGateway) AddHandler(handler any) func() {
 	label := "any"
-	if event := reflect.TypeOf(handler).In(1); event.Kind() == reflect.Ptr {
+	if event := reflect.TypeOf(handler).In(1); event.Kind() == reflect.Pointer {
 		label = strings.ToLower(event.Elem().Name())
 	}
 	if label == "messagecreate" {

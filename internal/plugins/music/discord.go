@@ -185,7 +185,9 @@ func endPlayback(audio *youtube.AudioStream, enc *dca.EncodeSession, done <-chan
 	}
 	enc.Cleanup()
 	if !received {
-		<-done
+		if err := <-done; err != nil && !errors.Is(err, io.EOF) {
+			logger.Log.Debugf("stream ended with error after cancel: %v", err)
+		}
 	}
 }
 

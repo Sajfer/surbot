@@ -130,6 +130,6 @@ func validHandlerShape(handler any) bool {
 	if event.Kind() == reflect.Interface {
 		return event.NumMethod() == 0
 	}
-	return event.Kind() == reflect.Ptr && event.Elem().Kind() == reflect.Struct &&
+	return event.Kind() == reflect.Pointer && event.Elem().Kind() == reflect.Struct &&
 		event.Elem().PkgPath() == discordgoPkg
 }

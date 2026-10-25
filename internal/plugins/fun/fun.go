@@ -96,7 +96,11 @@ func (p *Plugin) joke(ctx context.Context) string {
 		p.log.WithError(err).Warning("fetch joke")
 		return fallbackJoke()
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			p.log.WithError(err).Debug("close joke response body")
+		}
+	}()
 	if resp.StatusCode != http.StatusOK {
 		p.log.Warningf("joke API answered %s", resp.Status)
 		return fallbackJoke()
