@@ -3,6 +3,7 @@ package spotifyClient
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/zmb3/spotify/v2"
@@ -30,7 +31,8 @@ type Playlist struct {
 	Songs    []Song
 }
 
-func NewSpotifyClient(clientID, clientSecret string) *Client {
+// NewSpotifyClient returns an error if Spotify rejects the credentials.
+func NewSpotifyClient(clientID, clientSecret string) (*Client, error) {
 
 	config := &clientcredentials.Config{
 		ClientID:     clientID,
@@ -38,29 +40,36 @@ func NewSpotifyClient(clientID, clientSecret string) *Client {
 		TokenURL:     spotifyauth.TokenURL,
 	}
 
-	client, token := newClient(config)
+	client, token, err := newClient(config)
+	if err != nil {
+		return nil, err
+	}
 
-	return &Client{client: client, token: token, config: config}
+	return &Client{client: client, token: token, config: config}, nil
 }
 
-func newClient(config *clientcredentials.Config) (*spotify.Client, *oauth2.Token) {
+func newClient(config *clientcredentials.Config) (*spotify.Client, *oauth2.Token, error) {
 	ctx := context.Background()
 	token, err := config.Token(ctx)
 	if err != nil {
-		logger.Log.WithError(err).Fatal("failed to retrieve token")
+		return nil, nil, fmt.Errorf("failed to retrieve spotify token: %w", err)
 	}
 
 	httpClient := spotifyauth.New().Client(ctx, token)
 	client := spotify.New(httpClient)
-	return client, token
+	return client, token, nil
 }
 
-func (c *Client) checkToken() {
+func (c *Client) checkToken() error {
 	if c.token.Expiry.Before(time.Now()) {
 		logger.Log.Info("Token have expired, generating new token")
-		c.client, c.token = newClient(c.config)
+		client, token, err := newClient(c.config)
+		if err != nil {
+			return err
+		}
+		c.client, c.token = client, token
 	}
-
+	return nil
 }
 
 func (c *Client) Search(url string) (*Playlist, error) {
@@ -81,7 +90,9 @@ func (c *Client) Search(url string) (*Playlist, error) {
 func (c *Client) GetTrack(query string) (*Playlist, error) {
 	logger.Log.Debug("spotify.GetTrack")
 	ctx := context.Background()
-	c.checkToken()
+	if err := c.checkToken(); err != nil {
+		return &Playlist{}, err
+	}
 	results, err := c.client.GetTrack(ctx, spotify.ID(query), spotify.Limit(1))
 	if err != nil {
 		logger.Log.Warningf("Could not search for spotify track, err=%v", err)
@@ -94,7 +105,9 @@ func (c *Client) GetTrack(query string) (*Playlist, error) {
 func (c *Client) GetPlaylist(query string) (*Playlist, error) {
 	logger.Log.Debug("spotify.GetPlaylist")
 	ctx := context.Background()
-	c.checkToken()
+	if err := c.checkToken(); err != nil {
+		return &Playlist{}, err
+	}
 	results, err := c.client.GetPlaylist(ctx, spotify.ID(query), spotify.Limit(1))
 	if err != nil {
 		logger.Log.Warningf("Could not search for spotify track, err=%v", err)
@@ -110,7 +123,9 @@ func (c *Client) GetPlaylist(query string) (*Playlist, error) {
 func (c *Client) GetAlbum(query string) (*Playlist, error) {
 	logger.Log.Debug("spotify.GetAlbum")
 	ctx := context.Background()
-	c.checkToken()
+	if err := c.checkToken(); err != nil {
+		return &Playlist{}, err
+	}
 	results, err := c.client.GetAlbum(ctx, spotify.ID(query), spotify.Limit(1))
 	if err != nil {
 		logger.Log.Warningf("Could not search for spotify track, err=%v", err)
