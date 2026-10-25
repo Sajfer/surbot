@@ -56,6 +56,10 @@ spec:
               secretKeyRef:
                 name: {{ include "surbot.fullname" . }}-secrets
                 key: SpotifyClientSecret
+          {{- if .Values.debug }}
+          - name: SUR_DEBUG
+            value: "true"
+          {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
             #livenessProbe:

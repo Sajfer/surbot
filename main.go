@@ -5,6 +5,7 @@ import (
 	"flag"
 	"os"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"gitlab.com/sajfer/surbot/internal/logger"
@@ -59,6 +60,10 @@ func readAndInitConfig() *envConfig {
 }
 
 func main() {
+	// SUR_DEBUG turns on debug logs, for surbot and for discordgo's voice code.
+	if os.Getenv("SUR_DEBUG") != "" {
+		logger.Log.SetLevel(logrus.DebugLevel)
+	}
 	envConfigs := readAndInitConfig()
 
 	var (

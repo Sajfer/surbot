@@ -28,6 +28,9 @@ youtube_api: ""
 spotify_clientid: ""
 spotify_clientsecret: ""
 
+# Log at debug level, including discordgo's voice connection.
+debug: false
+
 podAnnotations: {}
 
 podSecurityContext:

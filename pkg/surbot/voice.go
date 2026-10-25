@@ -9,6 +9,7 @@ import (
 
 	"github.com/sajfer/dca"
 	"github.com/sajfer/discordgo"
+	"github.com/sirupsen/logrus"
 	"gitlab.com/sajfer/surbot/internal/logger"
 	"gitlab.com/sajfer/surbot/internal/utils"
 	"gitlab.com/sajfer/surbot/pkg/music"
@@ -45,12 +46,27 @@ func (voice *Voice) SetSession(session *discordgo.Session) {
 	voice.Session = session
 }
 
+// setVoiceLogLevel makes discordgo log the voice handshake when surbot runs at
+// debug level. A voice connection has its own log level, so it has to be
+// created with one before ChannelVoiceJoin starts the handshake.
+func setVoiceLogLevel(session *discordgo.Session, guildID string) {
+	if !logger.Log.IsLevelEnabled(logrus.DebugLevel) {
+		return
+	}
+	session.Lock()
+	defer session.Unlock()
+	if _, ok := session.VoiceConnections[guildID]; !ok {
+		session.VoiceConnections[guildID] = &discordgo.VoiceConnection{LogLevel: discordgo.LogDebug}
+	}
+}
+
 func (voice *Voice) Connect(channelId, guildId string, mute, deaf bool) error {
 	logger.Log.Debug("voice.Connect")
 
 	if channelId == "" {
 		return errors.New("user not in a channel")
 	}
+	setVoiceLogLevel(voice.Session, guildId)
 	vc, err := voice.Session.ChannelVoiceJoin(guildId, channelId, mute, deaf)
 	if err != nil {
 		if _, ok := voice.Session.VoiceConnections[guildId]; ok {
