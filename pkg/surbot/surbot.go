@@ -74,6 +74,8 @@ func (surbot *Surbot) messageReceived(s *discordgo.Session, m *discordgo.Message
 	server := surbot.checkServer(m.GuildID)
 	// Ensure the voice has a reference to the Discord session.
 	server.voice.SetSession(s)
+	// Replies like "Now playing" go to the channel of the latest command.
+	server.voice.SetTextChannel(m.ChannelID)
 	command := strings.TrimPrefix(m.Content, surbot.prefix)
 
 	surbot.dispatchCommand(s, m.ChannelID, server.voice, m, command)
