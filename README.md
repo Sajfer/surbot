@@ -21,6 +21,7 @@ and `TOKEN` both work, the prefixed key wins if both are present).
 | `SUR_YOUTUBE_API` | YouTube Data API key (search) |
 | `SUR_SPOTIFY_CLIENTID`, `SUR_SPOTIFY_CLIENTSECRET` | Spotify credentials (optional, Spotify links are disabled without them) |
 | `SUR_PLUGINS` | Comma-separated plugins to enable, in start order. Unset or empty enables all. An unknown or duplicate name stops the bot at startup. |
+| `SUR_RAJD_CHANNEL` | Channel ID the `!rajd` command posts to (default `1006248135737221251`). A non-numeric value stops the bot at startup. |
 | `SUR_DEBUG` | Any non-empty value turns on debug logging |
 
 ## Commands
@@ -45,7 +46,7 @@ answers with the usage text, `!play` uses all words as the query). Bots never tr
 | `!stop` | | Stop playing |
 | `!clearQueue` | | Clear the queue |
 | `!disconnect` | | Leave the voice channel |
-| `!roll` | `d6\|d10\|d20\|d100` | Roll a die |
+| `!roll` | `d6\|d10\|d20\|d100` | Roll a die (1 to N) |
 | `!rajd` | | Post this week's rajd days with reactions |
 
 ## Architecture / plugins
@@ -64,22 +65,35 @@ Plugins are compiled in: add one by implementing `core.Plugin` and listing it in
 
 On shutdown (SIGINT/SIGTERM) core stops routing, waits for running commands (up to 10s), tears
 the plugins down in reverse order (up to 10s each), then closes the Discord connection. A second
-signal during that time ends the process immediately. Worst case is 10s plus 10s per plugin,
-which can exceed Kubernetes' default `terminationGracePeriodSeconds` of 30s with three or more
-plugins; the Helm chart does not set it. The music plugin stops playback (yt-dlp and ffmpeg) and
-leaves voice in about 1-2s, so shutting down while music plays does not hit the drain timeout.
+signal during that time ends the process immediately. The `fun` and `rajd` plugins tear
+down instantly, so in practice shutdown takes at most the 10s drain (a running `!rajd` stops
+between days) plus music's teardown, within Kubernetes' default `terminationGracePeriodSeconds`
+of 30s, which the Helm chart does not set. The music plugin stops playback (yt-dlp and ffmpeg)
+and leaves voice in about 1-2s, so shutting down while music plays does not hit the drain
+timeout.
 
 ### Available plugins
 
 | Plugin | Commands |
 | --- | --- |
-| `legacy` | `ping`, `chuck`, `roll`, `rajd` (temporary; replaced by separate plugins later) |
+| `fun` | `ping`, `chuck`, `roll` |
+| `rajd` | `rajd` |
 | `music` | `play`, `playing`, `queue`, `shuffle`, `skip`, `stop`, `clearQueue`, `disconnect` |
 
 ```
-SUR_PLUGINS=music          # music commands (and help) only
-SUR_PLUGINS=legacy,music   # same as leaving it unset
+SUR_PLUGINS=music            # music commands (and help) only
+SUR_PLUGINS=fun,rajd         # everything except music
+SUR_PLUGINS=fun,rajd,music   # same as leaving it unset
 ```
+
+With Helm, the `plugins` and `rajd_channel` values map to `SUR_PLUGINS` and `SUR_RAJD_CHANNEL`.
+
+### Rajd
+
+`!rajd` posts today through the coming Tuesday to `SUR_RAJD_CHANNEL`, one message per day
+(`Monday 01/02`) with ✅ and ❌ reactions. It works from any channel or DM, and dates use the
+process time zone (UTC in the container image). If a post fails, the invoker sees
+`Something went wrong.`
 
 ### Music
 
