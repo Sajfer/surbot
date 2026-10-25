@@ -24,6 +24,15 @@ func readAndInitConfig() *envConfig {
 
 	viper.SetEnvPrefix("sur")
 	viper.AutomaticEnv()
+	// Unmarshal only sees keys viper knows about, and AutomaticEnv doesn't
+	// register any. Without these, SUR_* variables are ignored when there is
+	// no .env file, as in the container.
+	for _, key := range []string{"TOKEN", "YOUTUBE_API", "SPOTIFY_CLIENTID", "SPOTIFY_CLIENTSECRET"} {
+		if err := viper.BindEnv(key); err != nil {
+			logger.Log.Errorf("could not bind %s: %v", key, err)
+			os.Exit(1)
+		}
+	}
 	viper.SetConfigFile(".env")
 	viper.SetConfigType("env")
 	viper.AddConfigPath(".")
@@ -38,6 +47,11 @@ func readAndInitConfig() *envConfig {
 
 	if err := viper.Unmarshal(config); err != nil {
 		logger.Log.Errorf("could not parse config: %v", err)
+		os.Exit(1)
+	}
+
+	if config.Token == "" {
+		logger.Log.Error("no Discord token, set SUR_TOKEN or TOKEN in .env")
 		os.Exit(1)
 	}
 
