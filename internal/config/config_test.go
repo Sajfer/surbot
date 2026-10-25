@@ -144,7 +144,7 @@ func TestLoadParsesPluginList(t *testing.T) {
 		value string
 		want  []string
 	}{
-		{name: "trims and drops empties", value: " legacy, ,music ", want: []string{"legacy", "music"}},
+		{name: "trims and drops empties", value: " fun, ,music ", want: []string{"fun", "music"}},
 		{name: "empty means all", value: "", want: nil},
 		{name: "only separators means all", value: " , ", want: nil},
 	}

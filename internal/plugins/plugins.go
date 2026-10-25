@@ -3,11 +3,12 @@ package plugins
 
 import (
 	"gitlab.com/sajfer/surbot/internal/core"
-	"gitlab.com/sajfer/surbot/internal/plugins/legacy"
+	"gitlab.com/sajfer/surbot/internal/plugins/fun"
 	"gitlab.com/sajfer/surbot/internal/plugins/music"
+	"gitlab.com/sajfer/surbot/internal/plugins/rajd"
 )
 
 // Catalog returns every plugin that can be enabled, in default start order.
 func Catalog() []core.Plugin {
-	return []core.Plugin{legacy.New(), music.New()}
+	return []core.Plugin{fun.New(), rajd.New(), music.New()}
 }
