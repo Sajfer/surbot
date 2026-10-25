@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strings"
 	"syscall"
 	"time"
@@ -53,6 +54,13 @@ func (surbot *Surbot) checkServer(serverID string) *Server {
 
 // messageReceived handles incoming Discord messages
 func (surbot *Surbot) messageReceived(s *discordgo.Session, m *discordgo.MessageCreate) {
+	// A bug in one command must not take the whole bot down.
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Log.Errorf("recovered from panic while handling %q: %v\n%s", m.Content, r, debug.Stack())
+		}
+	}()
+
 	// Ignore all messages created by the bot itself
 	if m.Author.ID == s.State.User.ID {
 		return

@@ -225,37 +225,44 @@ func (voice *Voice) playRaw(song music.Song) (error, error) {
 		RawOutput:        true,
 	}
 
-	voice.EncodingSession, err = dca.EncodeFile(song.StreamURL, options)
+	// Keep our own references: Stop, Skip and Disconnect can change the
+	// shared fields from another goroutine while we wait on done.
+	encodingSession, err := dca.EncodeFile(song.StreamURL, options)
 	if err != nil {
 		logger.Log.Errorf("Could not encode stream: %v", err)
 		return nil, err
 	}
+	voice.EncodingSession = encodingSession
 
-	voice.done = make(chan error)
-	voice.StreamingSession = dca.NewStream(voice.EncodingSession, voice.VoiceChannel, voice.done)
-	msg := <-voice.done
+	done := make(chan error)
+	voice.done = done
+	streamingSession := dca.NewStream(encodingSession, voice.VoiceChannel, done)
+	voice.StreamingSession = streamingSession
+	msg := <-done
+	voice.Playing = false
+	defer func() {
+		encodingSession.Cleanup()
+		if voice.EncodingSession == encodingSession {
+			voice.EncodingSession = nil
+		}
+		if voice.StreamingSession == streamingSession {
+			voice.StreamingSession = nil
+		}
+	}()
+
 	if msg != nil && msg != io.EOF {
 		logger.Log.Errorf("error while playing audio: %v", msg)
-		logger.Log.Errorf("ffmpeg output: %s", voice.EncodingSession.FFMPEGMessages())
+		logger.Log.Errorf("ffmpeg output: %s", encodingSession.FFMPEGMessages())
 		return msg, err
 	}
 	// Check if ffmpeg actually produced any data or failed silently.
-	if ffmpegErr := voice.EncodingSession.Error(); ffmpegErr != nil {
-		logger.Log.Errorf("ffmpeg encoding error: %v\nffmpeg output:\n%s", ffmpegErr, voice.EncodingSession.FFMPEGMessages())
-		voice.Playing = false
+	if ffmpegErr := encodingSession.Error(); ffmpegErr != nil {
+		logger.Log.Errorf("ffmpeg encoding error: %v\nffmpeg output:\n%s", ffmpegErr, encodingSession.FFMPEGMessages())
 		return msg, ffmpegErr
 	}
-	voice.Playing = false
-	if voice.StreamingSession != nil {
-		_, err = voice.StreamingSession.Finished()
-		if err != nil {
-			logger.Log.Warningf("error while stopping stream session, err=%s", err)
-		}
-		voice.StreamingSession = nil
+	if _, err = streamingSession.Finished(); err != nil {
+		logger.Log.Warningf("error while stopping stream session, err=%s", err)
 	}
-
-	voice.EncodingSession.Cleanup()
-	voice.EncodingSession = nil
 	return msg, err
 }
 

@@ -113,6 +113,9 @@ func (yt *Youtube) GetVideoInfo(url string) (*Playlist, error) {
 	}
 	getStreamURL := func(video *ytdl.Video) (string, error) {
 		formats := video.Formats.WithAudioChannels()
+		if len(formats) == 0 {
+			return "", fmt.Errorf("no audio formats for video %s", video.ID)
+		}
 		// Prefer formats with both audio and video (index 1+), fall back to audio-only.
 		if len(formats) > 1 {
 			url, err := yt.ytdl.GetStreamURL(video, &formats[1])
@@ -152,7 +155,7 @@ func (yt *Youtube) GetVideoInfo(url string) (*Playlist, error) {
 			video := &Video{
 				Title:     tmp.Title,
 				Duration:  tmp.Duration.Seconds(),
-				Thumbnail: tmp.Thumbnails[0].URL,
+				Thumbnail: thumbnailURL(tmp),
 				ID:        tmp.ID,
 				StreamUrl: streamUrl,
 			}
@@ -168,7 +171,7 @@ func (yt *Youtube) GetVideoInfo(url string) (*Playlist, error) {
 		video := &Video{
 			Title:     ytVideo.Title,
 			Duration:  ytVideo.Duration.Seconds(),
-			Thumbnail: ytVideo.Thumbnails[0].URL,
+			Thumbnail: thumbnailURL(ytVideo),
 			ID:        ytVideo.ID,
 			StreamUrl: streamUrl,
 		}
@@ -176,4 +179,12 @@ func (yt *Youtube) GetVideoInfo(url string) (*Playlist, error) {
 	}
 
 	return playlist, nil
+}
+
+// thumbnailURL returns the video's first thumbnail, or "" if it has none.
+func thumbnailURL(video *ytdl.Video) string {
+	if len(video.Thumbnails) == 0 {
+		return ""
+	}
+	return video.Thumbnails[0].URL
 }
