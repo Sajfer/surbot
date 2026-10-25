@@ -111,6 +111,26 @@ func (yt *Youtube) GetVideoInfo(url string) (*Playlist, error) {
 	if err != nil {
 		return playlist, err
 	}
+	getStreamURL := func(video *ytdl.Video) (string, error) {
+		formats := video.Formats.WithAudioChannels()
+		// Prefer formats with both audio and video (index 1+), fall back to audio-only.
+		if len(formats) > 1 {
+			url, err := yt.ytdl.GetStreamURL(video, &formats[1])
+			if err != nil {
+				logger.Log.Warningf("failed to get stream URL (audio+video), trying audio-only: %v", err)
+			}
+			if url != "" {
+				return url, nil
+			}
+		}
+		// Fallback: first available format.
+		url, err := yt.ytdl.GetStreamURL(video, &formats[0])
+		if err != nil {
+			return "", fmt.Errorf("failed to get stream URL for video %s: %w", video.ID, err)
+		}
+		return url, nil
+	}
+
 	if strings.Contains(url, "list=") {
 		youtubePlaylist, err := yt.ytdl.GetPlaylist(url)
 		if err != nil {
@@ -123,8 +143,11 @@ func (yt *Youtube) GetVideoInfo(url string) (*Playlist, error) {
 			if err != nil {
 				continue
 			}
-			formats := tmp.Formats.WithAudioChannels()
-			streamUrl, _ := yt.ytdl.GetStreamURL(tmp, &formats[1])
+			streamUrl, err := getStreamURL(tmp)
+			if err != nil {
+				logger.Log.Warningf("skipping playlist song: %v", err)
+				continue
+			}
 
 			video := &Video{
 				Title:     tmp.Title,
@@ -136,8 +159,11 @@ func (yt *Youtube) GetVideoInfo(url string) (*Playlist, error) {
 			playlist.Songs = append(playlist.Songs, video)
 		}
 	} else {
-		formats := ytVideo.Formats.WithAudioChannels()
-		streamUrl, _ := yt.ytdl.GetStreamURL(ytVideo, &formats[1])
+		streamUrl, err := getStreamURL(ytVideo)
+		if err != nil {
+			return playlist, err
+		}
+		logger.Log.Debugf("got stream URL for %s", ytVideo.Title)
 
 		video := &Video{
 			Title:     ytVideo.Title,

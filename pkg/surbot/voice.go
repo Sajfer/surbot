@@ -67,8 +67,11 @@ func (voice *Voice) Connect(channelId, guildId string, mute, deaf bool) error {
 func (voice *Voice) Disconnect() error {
 	logger.Log.Debug("voice.Disconnect")
 
-	if voice.Playing {
-		voice.done <- errVoiceStoppedManually
+	if voice.Playing && voice.done != nil {
+		select {
+		case voice.done <- errVoiceStoppedManually:
+		default:
+		}
 	}
 	voice.Playing = false
 	voice.voiceChannelID = ""
@@ -120,6 +123,8 @@ func (voice *Voice) Start(m *discordgo.MessageCreate) error {
 			logger.Log.Warningf("could not join voice channel, err=%s", err)
 			return err
 		}
+		// Wait for voice connection to be fully ready before streaming.
+		time.Sleep(500 * time.Millisecond)
 		err = voice.play()
 		if err != nil {
 			logger.Log.Warningf("could not play song, err=%s", err)
@@ -132,7 +137,7 @@ func (voice *Voice) Start(m *discordgo.MessageCreate) error {
 func (voice *Voice) stopPlaying() error {
 	err := voice.Session.UpdateListeningStatus("")
 	voice.music.CurrentSong = nil
-	go voice.timer.initTimer(time.Duration(timeout)*time.Minute, *voice)
+	go voice.timer.initTimer(time.Duration(timeout)*time.Minute, voice)
 	return err
 }
 
@@ -192,7 +197,7 @@ func (voice *Voice) play() error {
 			return err
 		}
 		voice.music.CurrentSong = nil
-		go voice.timer.initTimer(time.Duration(timeout)*time.Minute, *voice)
+		go voice.timer.initTimer(time.Duration(timeout)*time.Minute, voice)
 		return nil
 	}
 }
@@ -201,25 +206,44 @@ func (voice *Voice) playRaw(song music.Song) (error, error) {
 	logger.Log.Debug("voice.PlayRaw")
 	var err error
 
-	options := dca.StdEncodeOptions
-	options.RawOutput = true
-	options.Bitrate = 384
-	options.Application = "lowdelay"
-	options.Volume = 0.10
-	options.VBR = true
+	if song.StreamURL == "" {
+		return nil, fmt.Errorf("stream URL is empty for song: %s", song.Title)
+	}
+	logger.Log.Debugf("encoding stream for: %s", song.Title)
+
+	options := &dca.EncodeOptions{
+		Volume:           0.10,
+		Channels:         2,
+		FrameRate:        48000,
+		FrameDuration:    20,
+		Bitrate:          384,
+		Application:      dca.AudioApplicationLowDelay,
+		CompressionLevel: 10,
+		PacketLoss:       1,
+		BufferedFrames:   100,
+		VBR:              true,
+		RawOutput:        true,
+	}
 
 	voice.EncodingSession, err = dca.EncodeFile(song.StreamURL, options)
 	if err != nil {
-		logger.Log.Warningf("Could not encode file, err=%s", err)
+		logger.Log.Errorf("Could not encode stream: %v", err)
 		return nil, err
 	}
 
 	voice.done = make(chan error)
 	voice.StreamingSession = dca.NewStream(voice.EncodingSession, voice.VoiceChannel, voice.done)
 	msg := <-voice.done
-	if err != nil && err != io.EOF {
-		logger.Log.Warningf("error while playing audio, err=%s", err)
-		return nil, err
+	if msg != nil && msg != io.EOF {
+		logger.Log.Errorf("error while playing audio: %v", msg)
+		logger.Log.Errorf("ffmpeg output: %s", voice.EncodingSession.FFMPEGMessages())
+		return msg, err
+	}
+	// Check if ffmpeg actually produced any data or failed silently.
+	if ffmpegErr := voice.EncodingSession.Error(); ffmpegErr != nil {
+		logger.Log.Errorf("ffmpeg encoding error: %v\nffmpeg output:\n%s", ffmpegErr, voice.EncodingSession.FFMPEGMessages())
+		voice.Playing = false
+		return msg, ffmpegErr
 	}
 	voice.Playing = false
 	if voice.StreamingSession != nil {
@@ -236,16 +260,22 @@ func (voice *Voice) playRaw(song music.Song) (error, error) {
 }
 
 func (voice *Voice) Stop() error {
-	voice.done <- errVoiceStoppedManually
-
-	if err := voice.EncodingSession.Stop(); err != nil {
-		return err
+	if voice.done != nil {
+		select {
+		case voice.done <- errVoiceStoppedManually:
+		default:
+		}
 	}
 
-	voice.EncodingSession.Cleanup()
+	if voice.EncodingSession != nil {
+		if err := voice.EncodingSession.Stop(); err != nil {
+			return err
+		}
+		voice.EncodingSession.Cleanup()
+	}
 	voice.Playing = false
 
-	go voice.timer.initTimer(time.Duration(timeout)*time.Minute, *voice)
+	go voice.timer.initTimer(time.Duration(timeout)*time.Minute, voice)
 
 	return nil
 }
@@ -306,10 +336,17 @@ func (voice *Voice) NowPlaying() {
 }
 
 func (voice *Voice) Skip() error {
-	voice.done <- errVoiceSkippedManually
+	if voice.done != nil {
+		select {
+		case voice.done <- errVoiceSkippedManually:
+		default:
+		}
+	}
 
-	if err := voice.EncodingSession.Stop(); err != nil {
-		return err
+	if voice.EncodingSession != nil {
+		if err := voice.EncodingSession.Stop(); err != nil {
+			return err
+		}
 	}
 
 	return nil
