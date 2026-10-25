@@ -12,6 +12,7 @@ import (
 	"gitlab.com/sajfer/surbot/internal/logger"
 	"gitlab.com/sajfer/surbot/internal/utils"
 	"gitlab.com/sajfer/surbot/pkg/music"
+	"gitlab.com/sajfer/surbot/pkg/youtube"
 )
 
 type Voice struct {
@@ -206,11 +207,6 @@ func (voice *Voice) playRaw(song music.Song) (error, error) {
 	logger.Log.Debug("voice.PlayRaw")
 	var err error
 
-	if song.StreamURL == "" {
-		return nil, fmt.Errorf("stream URL is empty for song: %s", song.Title)
-	}
-	logger.Log.Debugf("encoding stream for: %s", song.Title)
-
 	options := &dca.EncodeOptions{
 		Volume:           0.10,
 		Channels:         2,
@@ -227,7 +223,24 @@ func (voice *Voice) playRaw(song music.Song) (error, error) {
 
 	// Keep our own references: Stop, Skip and Disconnect can change the
 	// shared fields from another goroutine while we wait on done.
-	encodingSession, err := dca.EncodeFile(song.StreamURL, options)
+	var encodingSession *dca.EncodeSession
+	var stream *youtube.AudioStream
+	if song.ID != "" {
+		stream, err = youtube.OpenAudioStream(song.ID)
+		if err != nil {
+			logger.Log.Warningf("could not start yt-dlp for %s, trying the youtube library's stream URL: %v", song.Title, err)
+			stream = nil
+		} else {
+			defer func() { _ = stream.Close() }()
+			encodingSession, err = dca.EncodeMem(stream, options)
+		}
+	}
+	if stream == nil {
+		if song.StreamURL == "" {
+			return nil, fmt.Errorf("stream URL is empty for song: %s", song.Title)
+		}
+		encodingSession, err = dca.EncodeFile(song.StreamURL, options)
+	}
 	if err != nil {
 		logger.Log.Errorf("Could not encode stream: %v", err)
 		return nil, err
@@ -258,6 +271,9 @@ func (voice *Voice) playRaw(song music.Song) (error, error) {
 	// Check if ffmpeg actually produced any data or failed silently.
 	if ffmpegErr := encodingSession.Error(); ffmpegErr != nil {
 		logger.Log.Errorf("ffmpeg encoding error: %v\nffmpeg output:\n%s", ffmpegErr, encodingSession.FFMPEGMessages())
+		if stream != nil {
+			logger.Log.Errorf("yt-dlp output: %s", stream.Stderr())
+		}
 		return msg, ffmpegErr
 	}
 	if _, err = streamingSession.Finished(); err != nil {
