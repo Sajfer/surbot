@@ -18,7 +18,14 @@ type MusicClients struct {
 func NewMusicClients(youtubeAPI, spotifyClientID, spotifyClientSecret string) *MusicClients {
 	music := &MusicClients{}
 	music.Youtube = youtube.NewYoutube(youtubeAPI)
-	music.Spotify = spotifyClient.NewSpotifyClient(spotifyClientID, spotifyClientSecret)
+	// Without working Spotify credentials the bot still runs; only Spotify
+	// links are unavailable.
+	spotify, err := spotifyClient.NewSpotifyClient(spotifyClientID, spotifyClientSecret)
+	if err != nil {
+		logger.Log.WithError(err).Warning("spotify disabled, spotify links will not work")
+	} else {
+		music.Spotify = spotify
+	}
 	return music
 }
 
@@ -60,6 +67,9 @@ func (m *MusicClients) FetchSong(query string) (*Playlist, error) {
 
 func (m *MusicClients) fetchSpotifySong(query string) (*Playlist, error) {
 	logger.Log.Debug("music.fetchSpotifySong")
+	if m.Spotify == nil {
+		return nil, fmt.Errorf("spotify is not available")
+	}
 	songs, err := m.Spotify.Search(query)
 	if err != nil {
 		logger.Log.Warningf("could not search for song: %v", err)

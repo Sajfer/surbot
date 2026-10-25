@@ -35,5 +35,6 @@ func (m *Music) AddToQueue(playlist Playlist) error {
 }
 
 func (m *Music) Shuffle() {
+	// #nosec G404 -- shuffling a song queue, no need for crypto/rand
 	rand.Shuffle(len(m.Queue), func(i, j int) { m.Queue[i], m.Queue[j] = m.Queue[j], m.Queue[i] })
 }
