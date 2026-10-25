@@ -66,14 +66,50 @@ On shutdown (SIGINT/SIGTERM) core stops routing, waits for running commands (up 
 the plugins down in reverse order (up to 10s each), then closes the Discord connection. A second
 signal during that time ends the process immediately. Worst case is 10s plus 10s per plugin,
 which can exceed Kubernetes' default `terminationGracePeriodSeconds` of 30s with three or more
-plugins; the Helm chart does not set it.
+plugins; the Helm chart does not set it. The music plugin stops playback (yt-dlp and ffmpeg) and
+leaves voice in about 1-2s, so shutting down while music plays does not hit the drain timeout.
 
-Currently every command runs through the temporary `legacy` plugin, which wraps `pkg/surbot`.
-Known limitations of it:
+### Available plugins
 
-- Teardown does not stop playback or leave voice; the voice connection drops when the gateway
-  closes.
-- `!play` blocks its command until the whole queue has played, so shutting down while music plays
-  always hits the 10s drain timeout: the command is abandoned and the process exits.
-- Idle-timer goroutines are not owned by anyone.
-- Spotify login happens in `Setup` and is not bounded by its context.
+| Plugin | Commands |
+| --- | --- |
+| `legacy` | `ping`, `chuck`, `roll`, `rajd` (temporary; replaced by separate plugins later) |
+| `music` | `play`, `playing`, `queue`, `shuffle`, `skip`, `stop`, `clearQueue`, `disconnect` |
+
+```
+SUR_PLUGINS=music          # music commands (and help) only
+SUR_PLUGINS=legacy,music   # same as leaving it unset
+```
+
+### Music
+
+Each guild has its own player: one queue, one goroutine that joins the voice channel and plays
+the queue in order, and a 5 minute idle timer after which the bot leaves. `!play` returns as soon
+as the songs are queued; joining and playback happen in the background, and a failed join is
+reported in the text channel (`Failed to play song`) with the queue kept.
+
+- `!play <query>` uses the whole query, spaces included. Without arguments it shows its usage.
+  When the bot is not in voice, the author has to be in a voice channel (`Join a voice channel
+  first.`). A YouTube video, playlist (`list=`), Spotify link or free-text search is accepted.
+- `!queue` shows the current song first, then one numbered line per song, at most 20 lines and
+  then `… and N more`.
+- `!stop` stops the current song, keeps the queue and stays in voice; the next `!play` plays the
+  old queue first. `!disconnect` stops and leaves voice, also keeping the queue. `!skip` on the
+  last song starts the idle timer like any other end of playback.
+- `!play` moves the bot to the requester's voice channel when nothing is playing (idle or
+  stopped); while a song is playing the bot stays where it is and the song is only queued.
+- Music commands in a direct message answer `Music commands only work in a server.`
+
+Known limitations:
+
+- Joining a voice channel cannot be cancelled and can take up to about 11s, so shutting down
+  during a join can hit the 10s teardown limit.
+- The listening status is bot-wide, not per guild.
+- Spotify playlists and albums queue only their first track, and Spotify links must be in the
+  `?si=` form (a link without a query string is not recognised).
+- Hint texts hard-code the `!` prefix.
+- Every YouTube lookup creates its own metadata client, because the library's client is not safe
+  for concurrent use and sharing one behind a lock would let one guild's large playlist block
+  every other guild. The cost is a few extra requests per lookup (the client's visitor ID and
+  player cache are fetched again each time). A large playlist is still resolved video by video
+  and delays only the `!play` that asked for it. Lookups are cancelled at shutdown.
