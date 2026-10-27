@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 )
 
 var videoIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
@@ -40,7 +41,14 @@ func OpenAudioStream(videoID string) (*AudioStream, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	// #nosec G204 -- bin comes from a fixed list and videoID is validated above
 	cmd := exec.CommandContext(ctx, bin, "--quiet", "--no-warnings", "--no-cache-dir", "--no-playlist",
+		// The tv_samsung client's stream URLs only work after a delay, so
+		// yt-dlp sleeps 5s before downloading. The other default clients
+		// return URLs that work at once.
+		"--extractor-args", "youtube:player_client=default,-tv_samsung",
 		"--format", "bestaudio/best", "--output", "-", "https://www.youtube.com/watch?v="+videoID)
+	// Bounds Close when a child yt-dlp spawned (deno, for the JS challenge)
+	// still holds stderr after yt-dlp itself is killed.
+	cmd.WaitDelay = 2 * time.Second
 	stderr := &syncBuffer{}
 	cmd.Stderr = stderr
 	stdout, err := cmd.StdoutPipe()
@@ -74,12 +82,11 @@ func (a *AudioStream) Stderr() string {
 }
 
 func ytdlpBinary() (string, error) {
-	for _, name := range []string{"yt-dlp", "youtube-dl"} {
-		if path, err := exec.LookPath(name); err == nil {
-			return path, nil
-		}
+	path, err := exec.LookPath("yt-dlp")
+	if err != nil {
+		return "", errors.New("yt-dlp is not installed")
 	}
-	return "", errors.New("yt-dlp is not installed")
+	return path, nil
 }
 
 // syncBuffer keeps the first 16 KiB written to it; yt-dlp writes to stderr
