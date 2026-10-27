@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 )
 
 var videoIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
@@ -45,6 +46,9 @@ func OpenAudioStream(videoID string) (*AudioStream, error) {
 		// return URLs that work at once.
 		"--extractor-args", "youtube:player_client=default,-tv_samsung",
 		"--format", "bestaudio/best", "--output", "-", "https://www.youtube.com/watch?v="+videoID)
+	// Bounds Close when a child yt-dlp spawned (deno, for the JS challenge)
+	// still holds stderr after yt-dlp itself is killed.
+	cmd.WaitDelay = 2 * time.Second
 	stderr := &syncBuffer{}
 	cmd.Stderr = stderr
 	stdout, err := cmd.StdoutPipe()

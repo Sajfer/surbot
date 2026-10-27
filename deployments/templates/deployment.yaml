@@ -60,6 +60,14 @@ spec:
           - name: SUR_DEBUG
             value: "true"
           {{- end }}
+          {{- with .Values.plugins }}
+          - name: SUR_PLUGINS
+            value: {{ . | quote }}
+          {{- end }}
+          {{- with .Values.rajd_channel }}
+          - name: SUR_RAJD_CHANNEL
+            value: {{ . | quote }}
+          {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
             #livenessProbe:
