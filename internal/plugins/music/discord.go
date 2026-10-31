@@ -11,6 +11,7 @@ import (
 	"github.com/sajfer/discordgo"
 	"github.com/sirupsen/logrus"
 
+	"gitlab.com/sajfer/surbot/internal/core"
 	"gitlab.com/sajfer/surbot/internal/logger"
 	"gitlab.com/sajfer/surbot/internal/plugins/music/youtube"
 )
@@ -217,7 +218,7 @@ func (a discordAnnouncer) NowPlaying(channelID string, song *Song) {
 }
 
 func (a discordAnnouncer) Text(channelID, text string) {
-	if _, err := a.s.ChannelMessageSend(channelID, text); err != nil {
+	if err := core.SendText(a.s, channelID, text); err != nil {
 		a.log.WithError(err).Warning("failed to send message")
 	}
 }

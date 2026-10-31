@@ -29,11 +29,8 @@ func newRouter(prefix string, reg *registry) *router {
 	return &router{
 		prefix:   prefix,
 		registry: reg,
-		send: func(s *discordgo.Session, channelID, text string) error {
-			_, err := s.ChannelMessageSend(channelID, text)
-			return err
-		},
-		idle: make(chan struct{}),
+		send:     SendText,
+		idle:     make(chan struct{}),
 	}
 }
 

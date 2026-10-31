@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/sajfer/discordgo"
+
+	"gitlab.com/sajfer/surbot/internal/core"
 )
 
 // recorder collects what a request handler replied.
@@ -240,5 +242,26 @@ func TestQueueTextCapsAtTwentyLinesAndCountsTheRest(t *testing.T) {
 	}
 	if lines[1] != "1. now" || lines[20] != "20. ss" || lines[21] != "… and 6 more" {
 		t.Errorf("lines 1, 20, 21 = %q, %q, %q; want \"1. now\", \"20. sr\", \"… and 6 more\"", lines[1], lines[20], lines[21])
+	}
+}
+
+func TestQueueTextFitsDiscordLimitWithLongTitles(t *testing.T) {
+	long := strings.Repeat("x", 100) // YouTube's longest title
+	queue := make([]Song, 30)
+	for i := range queue {
+		queue[i] = Song{Title: long}
+	}
+
+	got := queueText(&Song{Title: long}, queue)
+
+	if n := len([]rune(got)); n > core.MaxMessageLength {
+		t.Fatalf("queueText is %d characters, over Discord's %d", n, core.MaxMessageLength)
+	}
+	lines := strings.Split(got, "\n")
+	if len(lines) != 22 || lines[21] != "… and 11 more" {
+		t.Errorf("want header + 20 songs + \"… and 11 more\", got %d lines ending %q", len(lines), lines[len(lines)-1])
+	}
+	if want := "1. " + strings.Repeat("x", maxQueueTitle-1) + "…"; lines[1] != want {
+		t.Errorf("line 1 = %q, want the title cut to %d characters", lines[1], maxQueueTitle)
 	}
 }
