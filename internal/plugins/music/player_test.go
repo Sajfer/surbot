@@ -200,7 +200,7 @@ func songs(titles ...string) []*Song {
 
 func (h *harness) play(voiceChannel string, titles ...string) {
 	h.t.Helper()
-	if err := h.p.Play(songs(titles...), voiceChannel, "t1"); err != nil {
+	if _, err := h.p.Play(songs(titles...), voiceChannel, "t1"); err != nil {
 		h.t.Fatalf("Play(%v) returned %v", titles, err)
 	}
 }
@@ -374,7 +374,7 @@ func TestMoveRejoinFailureKeepsQueueAndEndsLoop(t *testing.T) {
 func TestPlayWithoutVoiceChannelAndNoLoopQueuesNothing(t *testing.T) {
 	h := newHarness(t, time.Hour)
 
-	err := h.p.Play(songs("A"), "", "t1")
+	_, err := h.p.Play(songs("A"), "", "t1")
 
 	if !errors.Is(err, errNoVoiceChannel) {
 		t.Fatalf("Play error = %v, want errNoVoiceChannel", err)
@@ -388,7 +388,7 @@ func TestPlayAfterShutdownReturnsErrClosedAndJoinsNothing(t *testing.T) {
 	h := newHarness(t, time.Hour)
 	h.cancel()
 
-	err := h.p.Play(songs("A"), "v1", "t1")
+	_, err := h.p.Play(songs("A"), "v1", "t1")
 
 	if !errors.Is(err, errClosed) {
 		t.Fatalf("Play error = %v, want errClosed", err)
@@ -542,6 +542,40 @@ func TestSongErrorStillStartsNextSong(t *testing.T) {
 	h.expectStarted("B")
 }
 
+func TestSongErrorIsAnnouncedInTheTextChannel(t *testing.T) {
+	h := newHarness(t, time.Hour)
+	h.play("v1", "A", "B")
+	h.expectStarted("A")
+
+	h.finish(errors.New("no YouTube match"))
+
+	h.expectStarted("B")
+	if _, texts, _ := h.a.snapshot(); !reflect.DeepEqual(texts, []string{"t1:Could not play A, skipping."}) {
+		t.Errorf("texts = %v, want the skip announced in t1", texts)
+	}
+}
+
+func TestPlayStopsAtMaxQueueAndThenReportsAFullQueue(t *testing.T) {
+	h := newHarness(t, time.Hour)
+	h.play("v1", "playing")
+	h.expectStarted("playing") // the queue is empty again; the song stays current
+
+	many := make([]string, maxQueue+1)
+	for i := range many {
+		many[i] = "x"
+	}
+	added, err := h.p.Play(songs(many...), "v1", "t1")
+	if err != nil || added != maxQueue {
+		t.Fatalf("Play(%d songs) = %d, %v; want %d, nil", len(many), added, err, maxQueue)
+	}
+	if _, err := h.p.Play(songs("one more"), "v1", "t1"); !errors.Is(err, errQueueFull) {
+		t.Errorf("Play on a full queue returned %v, want errQueueFull", err)
+	}
+	if _, q := h.p.Snapshot(); len(q) != maxQueue {
+		t.Errorf("queue has %d songs, want %d", len(q), maxQueue)
+	}
+}
+
 func TestClearQueueKeepsCurrentSongAndDropsTheRest(t *testing.T) {
 	h := newHarness(t, 50*time.Millisecond)
 	h.play("v1", "A", "B", "C")
@@ -608,7 +642,7 @@ func TestConcurrentControlsAreRaceFreeAndNeverOverlapPlayback(t *testing.T) {
 			for i := range 20 {
 				switch (g + i) % 5 {
 				case 0:
-					_ = h.p.Play(songs("x", "y"), "v1", "t1")
+					_, _ = h.p.Play(songs("x", "y"), "v1", "t1")
 				case 1:
 					h.p.Skip()
 				case 2:
