@@ -33,9 +33,14 @@ type announcer interface {
 	Listening(title string) // "" clears the status
 }
 
+// maxQueue is the most songs a guild's queue holds, so one large playlist
+// cannot grow it without bound.
+const maxQueue = 1000
+
 var (
 	errClosed         = errors.New("music player is shut down")
 	errNoVoiceChannel = errors.New("not in a voice channel")
+	errQueueFull      = errors.New("queue is full")
 )
 
 // player owns one guild's queue and the single goroutine that joins voice and
@@ -76,18 +81,27 @@ func newPlayer(ctx context.Context, guildID string, v voiceJoiner, out announcer
 	}
 }
 
-// Play queues songs. voiceChannelID is the channel to join when the player is
-// not already in voice; it may be empty while the player is active.
-func (p *player) Play(songs []*Song, voiceChannelID, textChannelID string) error {
+// Play queues songs and returns how many fit: songs beyond maxQueue are
+// left out, and a full queue returns errQueueFull. voiceChannelID is the
+// channel to join when the player is not already in voice; it may be empty
+// while the player is active.
+func (p *player) Play(songs []*Song, voiceChannelID, textChannelID string) (int, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	if p.ctx.Err() != nil {
-		return errClosed
+		return 0, errClosed
 	}
 	active := p.running && !p.leave
 	if !active && voiceChannelID == "" {
-		return errNoVoiceChannel
+		return 0, errNoVoiceChannel
+	}
+	room := maxQueue - len(p.queue)
+	if room <= 0 {
+		return 0, errQueueFull
+	}
+	if len(songs) > room {
+		songs = songs[:room]
 	}
 
 	// The bot follows the requester only when nothing is playing and nothing
@@ -104,7 +118,7 @@ func (p *player) Play(songs []*Song, voiceChannelID, textChannelID string) error
 
 	if active {
 		p.signal()
-		return nil
+		return len(songs), nil
 	}
 	// A loop that is still leaving voice must finish first: discordgo keeps one
 	// voice connection per guild, so its Leave would drop the new loop's join.
@@ -113,7 +127,7 @@ func (p *player) Play(songs []*Song, voiceChannelID, textChannelID string) error
 	prev := p.done
 	p.done = make(chan struct{})
 	go p.loop(prev, p.done)
-	return nil
+	return len(songs), nil
 }
 
 func (p *player) signal() {
@@ -356,6 +370,7 @@ func (p *player) playTrack(ctx context.Context, cancel context.CancelFunc, conn 
 	p.log.Infof("Now playing: %s", song.Title)
 	if err := conn.Play(ctx, song); err != nil && !errors.Is(err, context.Canceled) {
 		p.log.WithError(err).Warningf("could not play %s", song.Title)
+		p.out.Text(textChannel, "Could not play "+song.Title+", skipping.")
 	}
 }
 
