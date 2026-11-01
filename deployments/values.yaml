@@ -4,6 +4,9 @@
 
 replicaCount: 1
 
+# Old ReplicaSets kept for rollback. Kubernetes defaults to 10.
+revisionHistoryLimit: 3
+
 image:
   repository: ghcr.io/sajfer/surbot
   pullPolicy: Always
