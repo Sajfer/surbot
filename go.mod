@@ -1,4 +1,4 @@
-module gitlab.com/sajfer/surbot
+module github.com/sajfer/surbot
 
 go 1.26.0
 

@@ -14,8 +14,8 @@ import (
 	"github.com/sajfer/discordgo"
 	"github.com/sirupsen/logrus"
 
-	"gitlab.com/sajfer/surbot/internal/config"
-	"gitlab.com/sajfer/surbot/internal/core"
+	"github.com/sajfer/surbot/internal/config"
+	"github.com/sajfer/surbot/internal/core"
 )
 
 func date(y int, m time.Month, d int) time.Time {

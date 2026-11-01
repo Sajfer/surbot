@@ -15,7 +15,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"gitlab.com/sajfer/surbot/internal/core"
+	"github.com/sajfer/surbot/internal/core"
 )
 
 const jokeAPI = "https://api.chucknorris.io/jokes/random"

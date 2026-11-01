@@ -2,10 +2,10 @@
 package plugins
 
 import (
-	"gitlab.com/sajfer/surbot/internal/core"
-	"gitlab.com/sajfer/surbot/internal/plugins/fun"
-	"gitlab.com/sajfer/surbot/internal/plugins/music"
-	"gitlab.com/sajfer/surbot/internal/plugins/rajd"
+	"github.com/sajfer/surbot/internal/core"
+	"github.com/sajfer/surbot/internal/plugins/fun"
+	"github.com/sajfer/surbot/internal/plugins/music"
+	"github.com/sajfer/surbot/internal/plugins/rajd"
 )
 
 // Catalog returns every plugin that can be enabled, in default start order.

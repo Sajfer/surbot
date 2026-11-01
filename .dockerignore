@@ -1,0 +1,16 @@
+# Only the Go sources are needed to build the image. Keep secrets (.env) and
+# the git history out of the build context.
+.git
+.github
+.env
+.env.*
+bin/
+vendor/
+deployments/
+build/
+debug
+debug.*
+__debug_bin
+.vscode
+.smallcode
+*.md

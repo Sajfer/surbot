@@ -12,8 +12,8 @@ import (
 	"github.com/sajfer/discordgo"
 	"github.com/sirupsen/logrus"
 
-	"gitlab.com/sajfer/surbot/internal/config"
-	"gitlab.com/sajfer/surbot/internal/logger"
+	"github.com/sajfer/surbot/internal/config"
+	"github.com/sajfer/surbot/internal/logger"
 )
 
 // Plugin is one feature. Constructors must not do I/O; Setup does the work.
