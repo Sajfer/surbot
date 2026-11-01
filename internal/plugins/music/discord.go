@@ -259,7 +259,7 @@ func truncate(s string, limit int) string {
 	return string(runes[:limit])
 }
 
-// formatDuration renders d as M:SS, or H:MM:SS from one hour on.
+// formatDuration renders d as MM:SS, or H:MM:SS from one hour on.
 func formatDuration(d time.Duration) string {
 	total := int(d.Seconds())
 	hours, minutes, seconds := total/3600, total%3600/60, total%60

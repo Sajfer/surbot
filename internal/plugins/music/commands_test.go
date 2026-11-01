@@ -3,6 +3,7 @@ package music
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -16,6 +17,7 @@ import (
 type recorder struct {
 	texts  []string
 	embeds []*discordgo.MessageEmbed
+	reacts []string
 }
 
 func (r *recorder) request(guild, textChannel, voiceChannel, args string) request {
@@ -23,6 +25,7 @@ func (r *recorder) request(guild, textChannel, voiceChannel, args string) reques
 		guildID: guild, textChannel: textChannel, voiceChannel: voiceChannel, args: args,
 		reply:      func(text string) error { r.texts = append(r.texts, text); return nil },
 		replyEmbed: func(e *discordgo.MessageEmbed) error { r.embeds = append(r.embeds, e); return nil },
+		react:      func(emoji string) { r.reacts = append(r.reacts, emoji) },
 	}
 }
 
@@ -106,20 +109,79 @@ func TestPlayWithoutArgumentsRepliesUsageWithoutLookup(t *testing.T) {
 	}
 }
 
-func TestCommandsInAGuildWithoutPlayerDoNothingHarmful(t *testing.T) {
+func TestControlsWithoutPlayerSayNothingIsPlaying(t *testing.T) {
 	tp := newTestPlugin(t, &fakeResolver{})
 	ctx := context.Background()
 
-	for name, run := range map[string]func(context.Context, request) error{
-		"skip": tp.skip, "stop": tp.stop, "disconnect": tp.disconnect, "shuffle": tp.shuffle,
+	for name, tt := range map[string]struct {
+		run  func(context.Context, request) error
+		want string
+	}{
+		"skip":       {tp.skip, notPlaying},
+		"stop":       {tp.stop, notPlaying},
+		"disconnect": {tp.disconnect, notPlaying},
+		"shuffle":    {tp.shuffle, noSongsText},
 	} {
 		var rec recorder
-		if err := run(ctx, rec.request("g1", "t1", "", "")); err != nil {
+		if err := tt.run(ctx, rec.request("g1", "t1", "", "")); err != nil {
 			t.Errorf("%s returned %v", name, err)
 		}
-		if len(rec.texts)+len(rec.embeds) != 0 {
-			t.Errorf("%s replied: %v %v", name, rec.texts, rec.embeds)
+		if !reflect.DeepEqual(rec.texts, []string{tt.want}) || len(rec.reacts) != 0 {
+			t.Errorf("%s replied %v and reacted %v, want only %q", name, rec.texts, rec.reacts, tt.want)
 		}
+	}
+}
+
+func TestControlsWhilePlayingReactInsteadOfReplying(t *testing.T) {
+	tp := newTestPlugin(t, &fakeResolver{songs: songs("A", "B", "C")})
+	tp.playIn("g1", "v1", "x")
+	waitStarted(t, tp.fakes("g1"), "A")
+
+	for name, run := range map[string]func(context.Context, request) error{
+		"shuffle": tp.shuffle, "skip": tp.skip,
+	} {
+		var rec recorder
+		if err := run(context.Background(), rec.request("g1", "t1", "", "")); err != nil {
+			t.Fatalf("%s returned %v", name, err)
+		}
+		if len(rec.texts) != 0 || !reflect.DeepEqual(rec.reacts, []string{ackEmoji}) {
+			t.Errorf("%s replied %v and reacted %v, want only %s", name, rec.texts, rec.reacts, ackEmoji)
+		}
+	}
+}
+
+func TestPlayOneSongReactsAndManySongsSayHowMany(t *testing.T) {
+	tp := newTestPlugin(t, &fakeResolver{songs: songs("A")})
+	var one recorder
+	if err := tp.play(context.Background(), one.request("g1", "t1", "v1", "a")); err != nil {
+		t.Fatalf("play returned %v", err)
+	}
+	if len(one.texts) != 0 || !reflect.DeepEqual(one.reacts, []string{ackEmoji}) {
+		t.Errorf("one song: replied %v and reacted %v, want only %s", one.texts, one.reacts, ackEmoji)
+	}
+
+	tp2 := newTestPlugin(t, &fakeResolver{songs: songs("A", "B", "C")})
+	var many recorder
+	if err := tp2.play(context.Background(), many.request("g1", "t1", "v1", "list")); err != nil {
+		t.Fatalf("play returned %v", err)
+	}
+	if want := []string{"Queued 3 songs."}; !reflect.DeepEqual(many.texts, want) {
+		t.Errorf("three songs: replies = %v, want %v", many.texts, want)
+	}
+}
+
+func TestPlayMoreThanTheQueueHoldsSaysHowManyWereLeftOut(t *testing.T) {
+	titles := make([]string, maxQueue+5)
+	for i := range titles {
+		titles[i] = fmt.Sprint(i)
+	}
+	tp := newTestPlugin(t, &fakeResolver{songs: songs(titles...)})
+
+	replies := tp.playIn("g1", "v1", "huge playlist")
+
+	want := fmt.Sprintf("Queued %d of %d songs; the queue holds at most %d.", maxQueue, maxQueue+5, maxQueue)
+	if !reflect.DeepEqual(replies, []string{want}) {
+		t.Errorf("replies = %v, want [%s]", replies, want)
 	}
 }
 
