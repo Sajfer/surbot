@@ -84,7 +84,7 @@ func fakeAPI(t *testing.T, routes map[string]string) *Client {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, strings.ReplaceAll(body, "{base}", base))
+		_, _ = fmt.Fprint(w, strings.ReplaceAll(body, "{base}", base))
 	}))
 	t.Cleanup(srv.Close)
 	base = srv.URL + "/"
