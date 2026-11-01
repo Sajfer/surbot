@@ -28,6 +28,15 @@ youtube_api: ""
 spotify_clientid: ""
 spotify_clientsecret: ""
 
+# Log at debug level, including discordgo's voice connection.
+debug: false
+
+# Comma-separated plugins to enable, in start order (fun, rajd, music). Empty enables all.
+plugins: ""
+# Discord channel ID the rajd command posts to. Empty uses the built-in default.
+# Always quote the ID, e.g. rajd_channel: "1006248135737221251".
+rajd_channel: ""
+
 podAnnotations: {}
 
 podSecurityContext:

@@ -2,73 +2,57 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/spf13/viper"
+	"github.com/sirupsen/logrus"
 
+	"gitlab.com/sajfer/surbot/internal/config"
+	"gitlab.com/sajfer/surbot/internal/core"
 	"gitlab.com/sajfer/surbot/internal/logger"
-	"gitlab.com/sajfer/surbot/pkg/surbot"
+	"gitlab.com/sajfer/surbot/internal/plugins"
 )
 
-type envConfig struct {
-	Token               string `mapstructure:"TOKEN"`
-	YoutubeAPI          string `mapstructure:"YOUTUBE_API"`
-	SpotifyClientID     string `mapstructure:"SPOTIFY_CLIENTID"`
-	SpotifyClientSecret string `mapstructure:"SPOTIFY_CLIENTSECRET"`
-}
-
-// readAndInitConfig reads configuration from .env file or environment variables.
-func readAndInitConfig() *envConfig {
-	config := &envConfig{}
-
-	viper.SetEnvPrefix("sur")
-	viper.AutomaticEnv()
-	// Unmarshal only sees keys viper knows about, and AutomaticEnv doesn't
-	// register any. Without these, SUR_* variables are ignored when there is
-	// no .env file, as in the container.
-	for _, key := range []string{"TOKEN", "YOUTUBE_API", "SPOTIFY_CLIENTID", "SPOTIFY_CLIENTSECRET"} {
-		if err := viper.BindEnv(key); err != nil {
-			logger.Log.Errorf("could not bind %s: %v", key, err)
-			os.Exit(1)
-		}
-	}
-	viper.SetConfigFile(".env")
-	viper.SetConfigType("env")
-	viper.AddConfigPath(".")
-
-	if _, err := os.Stat(".env"); err == nil {
-		logger.Log.Debug("reading configuration from environment and/or .env file")
-		if err := viper.ReadInConfig(); err != nil {
-			logger.Log.Errorf("could not read config: %v", err)
-			os.Exit(1)
-		}
-	}
-
-	if err := viper.Unmarshal(config); err != nil {
-		logger.Log.Errorf("could not parse config: %v", err)
-		os.Exit(1)
-	}
-
-	if config.Token == "" {
-		logger.Log.Error("no Discord token, set SUR_TOKEN or TOKEN in .env")
-		os.Exit(1)
-	}
-
-	return config
-}
-
 func main() {
-	envConfigs := readAndInitConfig()
+	os.Exit(run())
+}
 
-	var (
-		prefix = flag.String("p", "!", "Bot Prefix")
-	)
+func run() int {
+	// SUR_DEBUG turns on debug logs, for surbot and for discordgo's voice code.
+	if os.Getenv("SUR_DEBUG") != "" {
+		logger.Log.SetLevel(logrus.DebugLevel)
+	}
+	prefix := flag.String("p", "!", "Bot Prefix")
 	flag.Parse()
+
+	cfg, err := config.Load(".env")
+	if err != nil {
+		logger.Log.WithError(err).Error("could not load configuration")
+		return 1
+	}
 
 	logger.Log.Infof("Starting Surbot with prefix: %s", *prefix)
 
-	bot := surbot.NewSurbot(envConfigs.Token, envConfigs.YoutubeAPI,
-		envConfigs.SpotifyClientID, envConfigs.SpotifyClientSecret, *prefix)
-	bot.StartServer()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	// Once shutdown starts, restore default signal handling so a second
+	// Ctrl-C force-exits instead of waiting out the drain.
+	go func() {
+		<-ctx.Done()
+		stop()
+	}()
+
+	bot, err := core.New(cfg, *prefix, plugins.Catalog())
+	if err != nil {
+		logger.Log.WithError(err).Error("could not create bot")
+		return 1
+	}
+	if err := bot.Run(ctx); err != nil {
+		logger.Log.WithError(err).Error("bot stopped with an error")
+		return 1
+	}
+	return 0
 }

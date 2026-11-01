@@ -11,6 +11,11 @@ spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
+  # One bot token allows one working instance: during a rolling update the old
+  # and new pod would both answer commands and fight over voice connections.
+  # Recreate stops the old pod before the new one starts.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "surbot.selectorLabels" . | nindent 6 }}
@@ -56,6 +61,18 @@ spec:
               secretKeyRef:
                 name: {{ include "surbot.fullname" . }}-secrets
                 key: SpotifyClientSecret
+          {{- if .Values.debug }}
+          - name: SUR_DEBUG
+            value: "true"
+          {{- end }}
+          {{- with .Values.plugins }}
+          - name: SUR_PLUGINS
+            value: {{ . | quote }}
+          {{- end }}
+          {{- with .Values.rajd_channel }}
+          - name: SUR_RAJD_CHANNEL
+            value: {{ . | quote }}
+          {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
             #livenessProbe:
