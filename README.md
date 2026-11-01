@@ -108,7 +108,9 @@ reported in the text channel (`Failed to play song`) with the queue kept.
   Lookups and searches run yt-dlp, so no YouTube API key is needed.
 - A Spotify track, album or playlist link queues every track at once (at most 1000), shown as
   `Artist - Track` with Spotify's length and cover. Each track is searched on YouTube only when
-  it starts, so a track with no match is skipped then. Local files and podcast episodes in a
+  it starts: of the top 5 results the first within 5s (or 5%) of the Spotify length plays, so a
+  music video with a long intro or a different edit is passed over; with no close result the top
+  hit plays. A track with no result at all is skipped. Local files and podcast episodes in a
   playlist are left out.
 - `!queue` shows the current song first, then one numbered line per song, at most 20 lines and
   then `… and N more`.

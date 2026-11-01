@@ -101,15 +101,20 @@ func encodeOptions() *dca.EncodeOptions {
 	}
 }
 
-// openEncoder starts yt-dlp and ffmpeg for song. The caller must Close audio.
-func openEncoder(song *Song) (*dca.EncodeSession, *youtube.AudioStream, error) {
-	var audio *youtube.AudioStream
-	var err error
-	if song.ID == "" && song.Query != "" {
-		audio, err = youtube.OpenSearchStream(song.Query)
-	} else {
-		audio, err = youtube.OpenAudioStream(song.ID)
+// openEncoder starts yt-dlp and ffmpeg for song. A song without a video ID
+// (a Spotify track) is first matched to a YouTube video by its query and
+// length. The caller must Close audio.
+func openEncoder(ctx context.Context, song *Song) (*dca.EncodeSession, *youtube.AudioStream, error) {
+	id := song.ID
+	if id == "" && song.Query != "" {
+		video, err := youtube.New().Match(ctx, song.Query, song.Duration)
+		if err != nil {
+			return nil, nil, fmt.Errorf("find %s on YouTube: %w", song.Query, err)
+		}
+		logger.Log.Infof("matched %q (%s) to %q (%s, %s)", song.Query, formatDuration(song.Duration), video.Title, formatDuration(video.Duration), video.ID)
+		id = video.ID
 	}
+	audio, err := youtube.OpenAudioStream(id)
 	if err != nil {
 		return nil, nil, fmt.Errorf("start yt-dlp for %s: %w", song.Title, err)
 	}
@@ -125,8 +130,11 @@ func openEncoder(song *Song) (*dca.EncodeSession, *youtube.AudioStream, error) {
 // cancelled (then it returns ctx.Err()). When it returns, yt-dlp and ffmpeg
 // have exited and the dca streaming goroutine is done.
 func (c *discordConn) Play(ctx context.Context, song *Song) error {
-	enc, audio, err := openEncoder(song)
+	enc, audio, err := openEncoder(ctx, song)
 	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		logger.Log.Errorf("Could not encode stream: %v", err)
 		return err
 	}

@@ -10,12 +10,3 @@ func TestOpenAudioStreamRejectsInvalidIDs(t *testing.T) {
 		}
 	}
 }
-
-func TestOpenSearchStreamRejectsAnEmptyQuery(t *testing.T) {
-	for _, q := range []string{"", "   "} {
-		if stream, err := OpenSearchStream(q); err == nil {
-			_ = stream.Close()
-			t.Errorf("OpenSearchStream(%q) returned no error", q)
-		}
-	}
-}

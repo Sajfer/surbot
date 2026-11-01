@@ -36,15 +36,6 @@ func OpenAudioStream(videoID string) (*AudioStream, error) {
 	return openStream("https://www.youtube.com/watch?v=" + videoID)
 }
 
-// OpenSearchStream starts yt-dlp for the first video matching query, found
-// in the same run. Close stops it.
-func OpenSearchStream(query string) (*AudioStream, error) {
-	if strings.TrimSpace(query) == "" {
-		return nil, errors.New("empty search query")
-	}
-	return openStream("ytsearch1:" + query)
-}
-
 func openStream(target string) (*AudioStream, error) {
 	bin, err := ytdlpBinary()
 	if err != nil {

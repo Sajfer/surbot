@@ -129,3 +129,59 @@ func TestLookupStopsWhenContextIsCancelled(t *testing.T) {
 		t.Errorf("Lookup took %v after cancel", elapsed)
 	}
 }
+
+func TestClosestLength(t *testing.T) {
+	results := []*Video{
+		{ID: "video", Duration: 4*time.Minute + 30*time.Second}, // music video with an intro
+		{ID: "live", Duration: 5 * time.Minute},
+		{ID: "unknown"}, // no length known
+		{ID: "audio", Duration: 3*time.Minute + 33*time.Second},
+		{ID: "audio2", Duration: 3*time.Minute + 34*time.Second},
+	}
+	tests := []struct {
+		name string
+		want time.Duration
+		pick string
+	}{
+		{name: "first result within 5s wins over the top hit", want: 3*time.Minute + 32*time.Second, pick: "audio"},
+		{name: "exact length", want: 5 * time.Minute, pick: "live"},
+		{name: "5% tolerance for a long track", want: 4*time.Minute + 44*time.Second, pick: "video"},
+		{name: "nothing close falls back to the top hit", want: 10 * time.Minute, pick: "video"},
+		{name: "unknown length falls back to the top hit", want: 0, pick: "video"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := closestLength(results, tt.want); got.ID != tt.pick {
+				t.Errorf("closestLength(%v) = %s, want %s", tt.want, got.ID, tt.pick)
+			}
+		})
+	}
+}
+
+func TestMatchSearchesFiveResultsAndPicksByLength(t *testing.T) {
+	args := fakeYtdlp(t, `echo '{"_type":"playlist","entries":[
+		{"_type":"url","id":"aaaaaaaaaaa","title":"Song (Official Video)","duration":270},
+		{"_type":"url","id":"bbbbbbbbbbb","title":"Song","duration":213}
+	]}'`)
+
+	v, err := New().Match(context.Background(), "Artist - Song", 212*time.Second)
+
+	if err != nil {
+		t.Fatalf("Match returned error %v", err)
+	}
+	if v.ID != "bbbbbbbbbbb" {
+		t.Errorf("Match picked %s, want bbbbbbbbbbb (the one with the right length)", v.ID)
+	}
+	got := readArgs(t, args)
+	if last := got[len(got)-1]; last != "ytsearch5:Artist - Song" {
+		t.Errorf("yt-dlp target = %q, want ytsearch5:Artist - Song", last)
+	}
+}
+
+func TestMatchWithoutResultsFails(t *testing.T) {
+	fakeYtdlp(t, `echo '{"_type":"playlist","entries":[]}'`)
+
+	if v, err := New().Match(context.Background(), "zzzz", time.Minute); err == nil {
+		t.Fatalf("Match returned %+v, want an error", v)
+	}
+}

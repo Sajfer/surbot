@@ -18,7 +18,8 @@ type Song struct {
 	Thumbnail string
 	ID        string // YouTube video ID, streamed through yt-dlp
 	// Query is searched on YouTube when the song starts, for songs without
-	// an ID. Spotify tracks use it, so a long playlist queues at once.
+	// an ID, and the result closest to Duration is played. Spotify tracks
+	// use it, so a long playlist queues at once.
 	Query string
 }
 

@@ -42,6 +42,39 @@ func (c *Client) Search(ctx context.Context, query string) (*Video, error) {
 	return videos[0], nil
 }
 
+// matchCandidates is how many search results Match compares.
+const matchCandidates = 5
+
+// Match searches for query and returns the first of the top results whose
+// length is close to want (within 5s, or 5% for long tracks). A plain audio
+// upload usually matches a Spotify track's length, while a music video with
+// an intro, a live version or an extended mix does not. When none is close,
+// or want is zero, it returns the top result.
+func (c *Client) Match(ctx context.Context, query string, want time.Duration) (*Video, error) {
+	videos, err := c.Lookup(ctx, fmt.Sprintf("ytsearch%d:%s", matchCandidates, query))
+	if err != nil {
+		return nil, err
+	}
+	if len(videos) == 0 {
+		return nil, errors.New("youtube search returned no video")
+	}
+	return closestLength(videos, want), nil
+}
+
+func closestLength(videos []*Video, want time.Duration) *Video {
+	if want <= 0 {
+		return videos[0]
+	}
+	tolerance := max(5*time.Second, want/20)
+	for _, v := range videos {
+		diff := v.Duration - want
+		if v.Duration > 0 && diff <= tolerance && diff >= -tolerance {
+			return v
+		}
+	}
+	return videos[0]
+}
+
 // Lookup returns the video behind url, or every video of the playlist when the
 // URL has a list= parameter. Unavailable playlist entries are left out.
 func (c *Client) Lookup(ctx context.Context, url string) ([]*Video, error) {
