@@ -8,7 +8,7 @@ COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/surbot .
 
 
-FROM alpine:3.22 AS runner
+FROM alpine:3.24 AS runner
 
 # yt-dlp looks up and downloads the audio (internal/plugins/music/youtube).
 # YouTube changes often and old yt-dlp versions stop working, so keep this
