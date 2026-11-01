@@ -112,6 +112,13 @@ reported in the text channel (`Failed to play song`) with the queue kept.
   music video with a long intro or a different edit is passed over; with no close result the top
   hit plays. A track with no result at all is skipped. Local files and podcast episodes in a
   playlist are left out.
+- `!play` reacts with ✅ when one song is queued and says `Queued N songs.` for more. The
+  queue holds at most 1000 songs; songs past that are left out and `!play` says how many fit.
+- `!skip`, `!stop`, `!shuffle` and `!disconnect` react with ✅; without anything playing they
+  answer `Nothing is playing.` (`!shuffle`: `No songs queued.`, and it also works on a queue kept
+  after `!disconnect`). The bot needs the Add Reactions permission for the ✅.
+- A song that cannot be played (a removed video, a Spotify track without a YouTube match) is
+  announced as `Could not play <title>, skipping.` and the next one starts.
 - `!queue` shows the current song first, then one numbered line per song, at most 20 lines and
   then `… and N more`.
 - `!stop` stops the current song, keeps the queue and stays in voice; the next `!play` plays the

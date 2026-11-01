@@ -17,6 +17,8 @@ const (
 	// YouTube titles can be 100 characters, which would not fit.
 	maxQueueTitle = 80
 	noSongsText   = "No songs queued. " + playHint
+	notPlaying    = "Nothing is playing."
+	ackEmoji      = "✅"
 )
 
 // request is one music command with everything the handlers need, so they can
@@ -29,6 +31,14 @@ type request struct {
 	args         string
 	reply        func(text string) error
 	replyEmbed   func(*discordgo.MessageEmbed) error
+	react        func(emoji string) // adds a reaction to the command; nil in some tests
+}
+
+// ack marks the command as done with a reaction.
+func (r request) ack() {
+	if r.react != nil {
+		r.react(ackEmoji)
+	}
 }
 
 type commandSpec struct {
@@ -71,6 +81,12 @@ func (p *Plugin) adapt(fn func(*Plugin, context.Context, request) error) core.Ha
 				_, err := c.Session.ChannelMessageSendEmbed(m.ChannelID, e)
 				return err
 			},
+			react: func(emoji string) {
+				// A missing Add Reactions permission should not fail the command.
+				if err := c.Session.MessageReactionAdd(m.ChannelID, m.ID, emoji); err != nil {
+					p.log.WithError(err).Warning("could not react to command")
+				}
+			},
 		})
 	}
 }
@@ -107,14 +123,23 @@ func (p *Plugin) play(ctx context.Context, req request) error {
 		return req.reply("Failed to fetch song information")
 	}
 
-	err = pl.Play(songs, req.voiceChannel, req.textChannel)
+	added, err := pl.Play(songs, req.voiceChannel, req.textChannel)
 	switch {
-	case err == nil, errors.Is(err, errClosed):
+	case errors.Is(err, errClosed):
 		return nil
 	case errors.Is(err, errNoVoiceChannel):
 		return req.reply("Join a voice channel first.")
+	case errors.Is(err, errQueueFull):
+		return req.reply(fmt.Sprintf("The queue is full (%d songs).", maxQueue))
+	case err != nil:
+		return err
+	case added < len(songs):
+		return req.reply(fmt.Sprintf("Queued %d of %d songs; the queue holds at most %d.", added, len(songs), maxQueue))
+	case added > 1:
+		return req.reply(fmt.Sprintf("Queued %d songs.", added))
 	}
-	return err
+	req.ack()
+	return nil
 }
 
 func (p *Plugin) playing(_ context.Context, req request) error {
@@ -138,31 +163,41 @@ func (p *Plugin) queue(_ context.Context, req request) error {
 	return req.reply(queueText(current, queue))
 }
 
+// shuffle works on a kept queue too, after !disconnect or the idle timeout.
 func (p *Plugin) shuffle(_ context.Context, req request) error {
-	if pl := p.existing(req); pl != nil {
-		pl.Shuffle()
+	pl := p.existing(req)
+	if pl == nil {
+		return req.reply(noSongsText)
 	}
+	if _, queue := pl.Snapshot(); len(queue) == 0 {
+		return req.reply(noSongsText)
+	}
+	pl.Shuffle()
+	req.ack()
 	return nil
 }
 
 func (p *Plugin) skip(_ context.Context, req request) error {
-	if pl := p.existing(req); pl != nil {
-		pl.Skip()
-	}
-	return nil
+	return p.control(req, (*player).Skip)
 }
 
 func (p *Plugin) stop(_ context.Context, req request) error {
-	if pl := p.existing(req); pl != nil {
-		pl.Stop()
-	}
-	return nil
+	return p.control(req, (*player).Stop)
 }
 
 func (p *Plugin) disconnect(_ context.Context, req request) error {
-	if pl := p.existing(req); pl != nil {
-		pl.Disconnect()
+	return p.control(req, (*player).Disconnect)
+}
+
+// control runs action on the guild's player and reacts to the command, or
+// says nothing is playing when the guild has no active player.
+func (p *Plugin) control(req request, action func(*player)) error {
+	pl := p.existing(req)
+	if pl == nil || !pl.Active() {
+		return req.reply(notPlaying)
 	}
+	action(pl)
+	req.ack()
 	return nil
 }
 
