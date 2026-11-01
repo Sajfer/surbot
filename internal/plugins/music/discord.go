@@ -11,9 +11,9 @@ import (
 	"github.com/sajfer/discordgo"
 	"github.com/sirupsen/logrus"
 
-	"gitlab.com/sajfer/surbot/internal/core"
-	"gitlab.com/sajfer/surbot/internal/logger"
-	"gitlab.com/sajfer/surbot/internal/plugins/music/youtube"
+	"github.com/sajfer/surbot/internal/core"
+	"github.com/sajfer/surbot/internal/logger"
+	"github.com/sajfer/surbot/internal/plugins/music/youtube"
 )
 
 const (

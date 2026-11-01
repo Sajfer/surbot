@@ -15,7 +15,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"gitlab.com/sajfer/surbot/internal/core"
+	"github.com/sajfer/surbot/internal/core"
 )
 
 func quietLog() *logrus.Entry {

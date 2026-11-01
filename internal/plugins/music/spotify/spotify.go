@@ -14,7 +14,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
 
-	"gitlab.com/sajfer/surbot/internal/logger"
+	"github.com/sajfer/surbot/internal/logger"
 )
 
 const (

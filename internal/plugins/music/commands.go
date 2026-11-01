@@ -8,7 +8,7 @@ import (
 
 	"github.com/sajfer/discordgo"
 
-	"gitlab.com/sajfer/surbot/internal/core"
+	"github.com/sajfer/surbot/internal/core"
 )
 
 const (

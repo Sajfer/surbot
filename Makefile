@@ -1,18 +1,18 @@
-.PHONY: all lint build test run clean
+.PHONY: all lint build docker test run clean
 
 all: lint test build
 
 lint:
 	go fmt ./...
 	go mod tidy
-	go mod vendor
-	revive -exclude vendor/... -formatter friendly -config .revive.toml ./...
+	golangci-lint run ./...
 
 build:
-	go build -o bin/surbot main.go
+	CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/surbot .
 
 docker:
 	docker build -t surbot -f build/package/Dockerfile .
+
 test:
 	go vet -v ./...
 	go test -race -cover -v ./...

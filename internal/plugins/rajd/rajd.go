@@ -10,7 +10,7 @@ import (
 	"github.com/sajfer/discordgo"
 	"github.com/sirupsen/logrus"
 
-	"gitlab.com/sajfer/surbot/internal/core"
+	"github.com/sajfer/surbot/internal/core"
 )
 
 const defaultChannel = "1006248135737221251"

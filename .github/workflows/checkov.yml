@@ -16,7 +16,7 @@ jobs:
           python-version: 3.12
       - name: Test with Checkov
         id: checkov
-        uses: bridgecrewio/checkov-action@master
+        uses: bridgecrewio/checkov-action@v12.1347.0
         env:
           HELM_NAMESPACE: not-default
         with:

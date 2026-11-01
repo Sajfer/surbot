@@ -10,8 +10,8 @@ import (
 
 	"github.com/sajfer/discordgo"
 
-	"gitlab.com/sajfer/surbot/internal/config"
-	"gitlab.com/sajfer/surbot/internal/logger"
+	"github.com/sajfer/surbot/internal/config"
+	"github.com/sajfer/surbot/internal/logger"
 )
 
 const (

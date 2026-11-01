@@ -9,7 +9,7 @@ import (
 
 	"github.com/sajfer/discordgo"
 
-	"gitlab.com/sajfer/surbot/internal/logger"
+	"github.com/sajfer/surbot/internal/logger"
 )
 
 const failureReply = "Something went wrong."

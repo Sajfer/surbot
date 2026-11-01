@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"time"
 
-	"gitlab.com/sajfer/surbot/internal/plugins/music/spotify"
-	"gitlab.com/sajfer/surbot/internal/plugins/music/youtube"
+	"github.com/sajfer/surbot/internal/plugins/music/spotify"
+	"github.com/sajfer/surbot/internal/plugins/music/youtube"
 )
 
 // Song is one queued track.

@@ -13,3 +13,10 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "ci"
+
+  - package-ecosystem: "docker"
+    directory: "/build/package"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "fix"

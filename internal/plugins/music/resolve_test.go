@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.com/sajfer/surbot/internal/plugins/music/spotify"
-	"gitlab.com/sajfer/surbot/internal/plugins/music/youtube"
+	"github.com/sajfer/surbot/internal/plugins/music/spotify"
+	"github.com/sajfer/surbot/internal/plugins/music/youtube"
 )
 
 type fakeVideoAPI struct {

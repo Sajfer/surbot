@@ -10,7 +10,7 @@ import (
 
 	"github.com/sajfer/discordgo"
 
-	"gitlab.com/sajfer/surbot/internal/config"
+	"github.com/sajfer/surbot/internal/config"
 )
 
 type eventLog struct {
