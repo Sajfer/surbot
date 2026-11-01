@@ -13,6 +13,9 @@ import (
 
 const (
 	maxQueueLines = 20
+	// maxQueueTitle keeps 20 lines well under Discord's 2000 characters:
+	// YouTube titles can be 100 characters, which would not fit.
+	maxQueueTitle = 80
 	noSongsText   = "No songs queued. " + playHint
 )
 
@@ -191,7 +194,16 @@ func queueText(current *Song, queue []Song) string {
 			fmt.Fprintf(&b, "\n… and %d more", len(titles)-maxQueueLines)
 			break
 		}
-		fmt.Fprintf(&b, "\n%d. %s", i+1, title)
+		fmt.Fprintf(&b, "\n%d. %s", i+1, shorten(title, maxQueueTitle))
 	}
 	return b.String()
+}
+
+// shorten cuts s to at most limit characters, ending in "…" when cut.
+func shorten(s string, limit int) string {
+	runes := []rune(s)
+	if len(runes) <= limit {
+		return s
+	}
+	return string(runes[:limit-1]) + "…"
 }

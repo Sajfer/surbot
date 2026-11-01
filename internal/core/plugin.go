@@ -54,7 +54,8 @@ type Context struct {
 	send    func(channelID, text string) error
 }
 
-// Reply sends text to the channel the command came from.
+// Reply sends text to the channel the command came from, with mentions turned
+// off and cut to fit Discord's limit (see SendText).
 func (c *Context) Reply(text string) error {
 	return c.send(c.Message.ChannelID, text)
 }
