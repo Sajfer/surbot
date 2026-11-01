@@ -177,6 +177,55 @@ func TestPlaySongToTheEndReturnsNil(t *testing.T) {
 	}
 }
 
+func TestPlaySongWithQueryPlaysTheResultClosestInLength(t *testing.T) {
+	requireFFmpeg(t)
+	argsFile := filepath.Join(t.TempDir(), "args")
+	// The first run is the search (it asks for JSON); the second streams.
+	installFakeYtdlp(t, `case "$*" in
+*--dump-single-json*) echo '{"_type":"playlist","entries":[{"id":"aaaaaaaaaaa","title":"video","duration":300},{"id":"bbbbbbbbbbb","title":"audio","duration":61}]}' ;;
+*) printf '%s\n' "$@" > `+argsFile+`; exec ffmpeg -loglevel quiet -f lavfi -i sine=frequency=440:duration=1 -f wav - ;;
+esac`)
+	vc, _ := drainedVoice(t)
+
+	result := startPlay(context.Background(), vc, &Song{Title: "X - Y", Query: "X - Y", Duration: time.Minute})
+
+	select {
+	case r := <-result:
+		if r.err != nil {
+			t.Fatalf("Play returned %v, want nil", r.err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Play did not finish a 1s song")
+	}
+	raw, err := os.ReadFile(argsFile)
+	if err != nil {
+		t.Fatalf("read stream args: %v", err)
+	}
+	args := strings.Split(strings.TrimSpace(string(raw)), "\n")
+	if last := args[len(args)-1]; last != "https://www.youtube.com/watch?v=bbbbbbbbbbb" {
+		t.Errorf("streamed %q, want the 61s result bbbbbbbbbbb", last)
+	}
+}
+
+func TestPlaySongWithQueryCancelledDuringSearchReturnsCanceled(t *testing.T) {
+	installFakeYtdlp(t, "exec sleep 30")
+	vc, _ := drainedVoice(t)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	result := startPlay(ctx, vc, &Song{Title: "X - Y", Query: "X - Y"})
+	time.Sleep(100 * time.Millisecond)
+	cancel()
+
+	select {
+	case r := <-result:
+		if !errors.Is(r.err, context.Canceled) {
+			t.Errorf("Play returned %v, want context.Canceled", r.err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Play did not return after cancel during the search")
+	}
+}
+
 func TestPlaySongWithoutIDFailsAtOnce(t *testing.T) {
 	vc, _ := drainedVoice(t)
 

@@ -17,6 +17,10 @@ type Song struct {
 	Duration  time.Duration
 	Thumbnail string
 	ID        string // YouTube video ID, streamed through yt-dlp
+	// Query is searched on YouTube when the song starts, for songs without
+	// an ID, and the result closest to Duration is played. Spotify tracks
+	// use it, so a long playlist queues at once.
+	Query string
 }
 
 // youtubeURLRegex matches the YouTube links yt-dlp is asked about directly:
@@ -34,7 +38,7 @@ type videoAPI interface {
 }
 
 type trackAPI interface {
-	Search(ctx context.Context, url string) (*spotify.Playlist, error)
+	Search(ctx context.Context, url string) ([]spotify.Song, error)
 }
 
 // resolver turns a !play query into songs. ctx bounds every network call.
@@ -80,10 +84,15 @@ func (c *clients) fromSpotify(ctx context.Context, query string) ([]*Song, error
 	if err != nil {
 		return nil, fmt.Errorf("spotify lookup: %w", err)
 	}
-	if len(tracks.Songs) == 0 {
+	if len(tracks) == 0 {
 		return nil, errors.New("spotify returned no songs")
 	}
-	return c.fromSearch(ctx, fmt.Sprintf("%s - %s", tracks.Songs[0].Artist, tracks.Songs[0].Name))
+	songs := make([]*Song, len(tracks))
+	for i, t := range tracks {
+		name := fmt.Sprintf("%s - %s", t.Artist, t.Name)
+		songs[i] = &Song{Title: name, Duration: t.Duration, Thumbnail: t.Thumbnail, Query: name}
+	}
+	return songs, nil
 }
 
 func (c *clients) fromLink(ctx context.Context, url string) ([]*Song, error) {

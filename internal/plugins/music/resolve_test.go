@@ -35,8 +35,8 @@ type fakeTrackAPI struct {
 	err   error
 }
 
-func (f *fakeTrackAPI) Search(context.Context, string) (*spotify.Playlist, error) {
-	return &spotify.Playlist{Songs: f.songs}, f.err
+func (f *fakeTrackAPI) Search(context.Context, string) ([]spotify.Song, error) {
+	return f.songs, f.err
 }
 
 func titles(songs []*Song) []string {
@@ -117,20 +117,27 @@ func TestResolveSpotifyLinkWithSpotifyDisabledReturnsErrorWithoutCallingYouTube(
 	}
 }
 
-func TestResolveSpotifyTrackSearchesYouTubeForArtistAndNameAndReturnsOneSong(t *testing.T) {
-	yt := &fakeVideoAPI{searchResult: &youtube.Video{Title: "Y by X"}}
-	sp := &fakeTrackAPI{songs: []spotify.Song{{Artist: "X", Name: "Y"}, {Artist: "Z", Name: "W"}}}
+func TestResolveSpotifyQueuesEveryTrackWithoutSearchingYet(t *testing.T) {
+	yt := &fakeVideoAPI{}
+	sp := &fakeTrackAPI{songs: []spotify.Song{
+		{Artist: "X", Name: "Y", Duration: time.Minute, Thumbnail: "https://img/y.jpg"},
+		{Artist: "Z", Name: "W"},
+	}}
 
 	songs, err := newResolver(yt, sp).Resolve(context.Background(), "https://open.spotify.com/playlist/4cOdK2wGLETKBW3PvgPWqT?si=a")
 
 	if err != nil {
 		t.Fatalf("Resolve returned error %v", err)
 	}
-	if want := []string{"X - Y"}; !reflect.DeepEqual(yt.searched, want) {
-		t.Errorf("searched = %v, want %v", yt.searched, want)
-	}
-	if want := []string{"Y by X"}; !reflect.DeepEqual(titles(songs), want) {
+	if want := []string{"X - Y", "Z - W"}; !reflect.DeepEqual(titles(songs), want) {
 		t.Errorf("Resolve titles = %v, want %v", titles(songs), want)
+	}
+	first := songs[0]
+	if first.Query != "X - Y" || first.ID != "" || first.Duration != time.Minute || first.Thumbnail != "https://img/y.jpg" {
+		t.Errorf("first song = %+v, want query X - Y, no ID, Spotify duration and cover", first)
+	}
+	if len(yt.searched) != 0 || len(yt.lookups) != 0 {
+		t.Errorf("YouTube was called at queue time: searched=%v lookups=%v", yt.searched, yt.lookups)
 	}
 }
 
