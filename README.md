@@ -106,6 +106,10 @@ reported in the text channel (`Failed to play song`) with the queue kept.
   first.`). A YouTube video, short or playlist link (`youtube.com`, `m.`/`music.youtube.com`, `youtu.be`;
   a link with `list=` queues the whole playlist), a Spotify link or free-text search is accepted.
   Lookups and searches run yt-dlp, so no YouTube API key is needed.
+- A Spotify track, album or playlist link queues every track at once (at most 1000), shown as
+  `Artist - Track` with Spotify's length and cover. Each track is searched on YouTube only when
+  it starts, so a track with no match is skipped then. Local files and podcast episodes in a
+  playlist are left out.
 - `!queue` shows the current song first, then one numbered line per song, at most 20 lines and
   then `… and N more`.
 - `!stop` stops the current song, keeps the queue and stays in voice; the next `!play` plays the
@@ -120,7 +124,6 @@ Known limitations:
 - Joining a voice channel cannot be cancelled and can take up to about 11s, so shutting down
   during a join can hit the 10s teardown limit.
 - The listening status is bot-wide, not per guild.
-- Spotify playlists and albums queue only their first track.
 - Hint texts hard-code the `!` prefix.
 - Each lookup starts a yt-dlp process (about 1-2s for a video). A large playlist is listed
   in one run without opening each video, and lookups are cancelled at shutdown.

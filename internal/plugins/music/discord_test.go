@@ -177,6 +177,32 @@ func TestPlaySongToTheEndReturnsNil(t *testing.T) {
 	}
 }
 
+func TestPlaySongWithQuerySearchesInTheSameYtdlpRun(t *testing.T) {
+	requireFFmpeg(t)
+	argsFile := filepath.Join(t.TempDir(), "args")
+	installFakeYtdlp(t, "printf '%s\\n' \"$@\" > "+argsFile+"\nexec ffmpeg -loglevel quiet -f lavfi -i sine=frequency=440:duration=1 -f wav -")
+	vc, _ := drainedVoice(t)
+
+	result := startPlay(context.Background(), vc, &Song{Title: "X - Y", Query: "X - Y"})
+
+	select {
+	case r := <-result:
+		if r.err != nil {
+			t.Fatalf("Play returned %v, want nil", r.err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Play did not finish a 1s song")
+	}
+	raw, err := os.ReadFile(argsFile)
+	if err != nil {
+		t.Fatalf("read args: %v", err)
+	}
+	args := strings.Split(strings.TrimSpace(string(raw)), "\n")
+	if n := len(args); n < 2 || args[n-2] != "--" || args[n-1] != "ytsearch1:X - Y" {
+		t.Errorf("yt-dlp args end in %q, want -- ytsearch1:X - Y", args)
+	}
+}
+
 func TestPlaySongWithoutIDFailsAtOnce(t *testing.T) {
 	vc, _ := drainedVoice(t)
 

@@ -103,7 +103,13 @@ func encodeOptions() *dca.EncodeOptions {
 
 // openEncoder starts yt-dlp and ffmpeg for song. The caller must Close audio.
 func openEncoder(song *Song) (*dca.EncodeSession, *youtube.AudioStream, error) {
-	audio, err := youtube.OpenAudioStream(song.ID)
+	var audio *youtube.AudioStream
+	var err error
+	if song.ID == "" && song.Query != "" {
+		audio, err = youtube.OpenSearchStream(song.Query)
+	} else {
+		audio, err = youtube.OpenAudioStream(song.ID)
+	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("start yt-dlp for %s: %w", song.Title, err)
 	}

@@ -33,19 +33,32 @@ func OpenAudioStream(videoID string) (*AudioStream, error) {
 	if !videoIDPattern.MatchString(videoID) {
 		return nil, fmt.Errorf("invalid video id %q", videoID)
 	}
+	return openStream("https://www.youtube.com/watch?v=" + videoID)
+}
+
+// OpenSearchStream starts yt-dlp for the first video matching query, found
+// in the same run. Close stops it.
+func OpenSearchStream(query string) (*AudioStream, error) {
+	if strings.TrimSpace(query) == "" {
+		return nil, errors.New("empty search query")
+	}
+	return openStream("ytsearch1:" + query)
+}
+
+func openStream(target string) (*AudioStream, error) {
 	bin, err := ytdlpBinary()
 	if err != nil {
 		return nil, err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	// #nosec G204 -- bin comes from a fixed list and videoID is validated above
+	// #nosec G204 -- bin comes from PATH lookup of a fixed name; target is one argument after "--"
 	cmd := exec.CommandContext(ctx, bin, "--quiet", "--no-warnings", "--no-cache-dir", "--no-playlist",
 		// The tv_samsung client's stream URLs only work after a delay, so
 		// yt-dlp sleeps 5s before downloading. The other default clients
 		// return URLs that work at once.
 		"--extractor-args", "youtube:player_client=default,-tv_samsung",
-		"--format", "bestaudio/best", "--output", "-", "https://www.youtube.com/watch?v="+videoID)
+		"--format", "bestaudio/best", "--output", "-", "--", target)
 	// Bounds Close when a child yt-dlp spawned (deno, for the JS challenge)
 	// still holds stderr after yt-dlp itself is killed.
 	cmd.WaitDelay = 2 * time.Second
