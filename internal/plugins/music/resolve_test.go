@@ -5,31 +5,29 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"gitlab.com/sajfer/surbot/internal/plugins/music/spotify"
 	"gitlab.com/sajfer/surbot/internal/plugins/music/youtube"
 )
 
 type fakeVideoAPI struct {
-	searchResult string
+	searchResult *youtube.Video
 	searchErr    error
 	searched     []string
 	videos       map[string][]*youtube.Video
-	infoErr      error
-	infoCalls    []string
+	lookupErr    error
+	lookups      []string
 }
 
-func (f *fakeVideoAPI) SearchVideo(_ context.Context, query string) (string, error) {
+func (f *fakeVideoAPI) Search(_ context.Context, query string) (*youtube.Video, error) {
 	f.searched = append(f.searched, query)
 	return f.searchResult, f.searchErr
 }
 
-func (f *fakeVideoAPI) GetVideoInfo(_ context.Context, url string) (*youtube.Playlist, error) {
-	f.infoCalls = append(f.infoCalls, url)
-	if f.infoErr != nil {
-		return &youtube.Playlist{}, f.infoErr
-	}
-	return &youtube.Playlist{Songs: f.videos[url]}, nil
+func (f *fakeVideoAPI) Lookup(_ context.Context, url string) ([]*youtube.Video, error) {
+	f.lookups = append(f.lookups, url)
+	return f.videos[url], f.lookupErr
 }
 
 type fakeTrackAPI struct {
@@ -71,11 +69,8 @@ func TestResolveYouTubeURLReturnsEveryVideoInOrder(t *testing.T) {
 	}
 }
 
-func TestResolveFreeTextSearchesAndReturnsFirstVideoOnly(t *testing.T) {
-	yt := &fakeVideoAPI{
-		searchResult: "youtube.com/watch?v=xyz",
-		videos:       map[string][]*youtube.Video{"youtube.com/watch?v=xyz": {{Title: "hit", Duration: 90.5}, {Title: "extra"}}},
-	}
+func TestResolveFreeTextSearchesAndReturnsTheMatch(t *testing.T) {
+	yt := &fakeVideoAPI{searchResult: &youtube.Video{Title: "hit", Duration: 90500 * time.Millisecond, ID: "xyzxyzxyzxy"}}
 
 	songs, err := newResolver(yt, nil).Resolve(context.Background(), "never gonna give")
 
@@ -88,8 +83,11 @@ func TestResolveFreeTextSearchesAndReturnsFirstVideoOnly(t *testing.T) {
 	if want := []string{"never gonna give"}; !reflect.DeepEqual(yt.searched, want) {
 		t.Errorf("searched = %v, want %v", yt.searched, want)
 	}
-	if songs[0].Duration.Seconds() != 90.5 {
-		t.Errorf("Duration = %v, want 1m30.5s", songs[0].Duration)
+	if songs[0].Duration.Seconds() != 90.5 || songs[0].ID != "xyzxyzxyzxy" {
+		t.Errorf("song = %+v, want 1m30.5s with ID xyzxyzxyzxy", songs[0])
+	}
+	if len(yt.lookups) != 0 {
+		t.Errorf("Lookup was called for free text: %v", yt.lookups)
 	}
 }
 
@@ -101,8 +99,8 @@ func TestResolveSearchWithoutResultReturnsError(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Resolve returned songs %v, want an error", titles(songs))
 	}
-	if len(yt.infoCalls) != 0 {
-		t.Errorf("GetVideoInfo was called after a failed search: %v", yt.infoCalls)
+	if len(yt.lookups) != 0 {
+		t.Errorf("Lookup was called after a failed search: %v", yt.lookups)
 	}
 }
 
@@ -114,16 +112,13 @@ func TestResolveSpotifyLinkWithSpotifyDisabledReturnsErrorWithoutCallingYouTube(
 	if err == nil {
 		t.Fatal("Resolve returned no error with Spotify disabled")
 	}
-	if len(yt.searched) != 0 || len(yt.infoCalls) != 0 {
-		t.Errorf("YouTube was called: searched=%v info=%v", yt.searched, yt.infoCalls)
+	if len(yt.searched) != 0 || len(yt.lookups) != 0 {
+		t.Errorf("YouTube was called: searched=%v lookups=%v", yt.searched, yt.lookups)
 	}
 }
 
 func TestResolveSpotifyTrackSearchesYouTubeForArtistAndNameAndReturnsOneSong(t *testing.T) {
-	yt := &fakeVideoAPI{
-		searchResult: "youtube.com/watch?v=abc",
-		videos:       map[string][]*youtube.Video{"youtube.com/watch?v=abc": {{Title: "Y by X"}}},
-	}
+	yt := &fakeVideoAPI{searchResult: &youtube.Video{Title: "Y by X"}}
 	sp := &fakeTrackAPI{songs: []spotify.Song{{Artist: "X", Name: "Y"}, {Artist: "Z", Name: "W"}}}
 
 	songs, err := newResolver(yt, sp).Resolve(context.Background(), "https://open.spotify.com/playlist/4cOdK2wGLETKBW3PvgPWqT?si=a")
@@ -156,5 +151,44 @@ func TestResolveZeroVideosReturnsErrorNotEmptySlice(t *testing.T) {
 
 	if err == nil {
 		t.Fatalf("Resolve returned %d songs and no error", len(songs))
+	}
+}
+
+func TestResolveLookupErrorIsReturned(t *testing.T) {
+	yt := &fakeVideoAPI{lookupErr: errors.New("yt-dlp failed")}
+
+	if _, err := newResolver(yt, nil).Resolve(context.Background(), "https://youtu.be/dQw4w9WgXcQ"); err == nil {
+		t.Fatal("Resolve returned no error when the lookup failed")
+	}
+}
+
+func TestIsYouTubeURL(t *testing.T) {
+	links := []string{
+		"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		"youtube.com/watch?v=dQw4w9WgXcQ",
+		"https://www.youtube.com/watch?app=desktop&v=dQw4w9WgXcQ",
+		"https://www.youtube.com/playlist?list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI",
+		"https://youtu.be/dQw4w9WgXcQ?si=abc",
+		"https://m.youtube.com/watch?v=dQw4w9WgXcQ",
+		"https://music.youtube.com/watch?v=dQw4w9WgXcQ",
+		"https://youtube.com/shorts/dQw4w9WgXcQ",
+		"https://www.youtube.com/live/dQw4w9WgXcQ",
+	}
+	for _, u := range links {
+		if !isYouTubeURL(u) {
+			t.Errorf("isYouTubeURL(%q) = false, want true", u)
+		}
+	}
+	notLinks := []string{
+		"never gonna give you up",
+		"https://www.youtube.com/@channel",
+		"https://www.youtube.com/",
+		"https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT",
+		"https://www.youtube.com/watch?v=dQw4w9WgXcQ and more words",
+	}
+	for _, u := range notLinks {
+		if isYouTubeURL(u) {
+			t.Errorf("isYouTubeURL(%q) = true, want false", u)
+		}
 	}
 }

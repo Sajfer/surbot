@@ -18,7 +18,6 @@ and `TOKEN` both work, the prefixed key wins if both are present).
 | Key | Purpose |
 | --- | --- |
 | `SUR_TOKEN` | Discord bot token (required) |
-| `SUR_YOUTUBE_API` | YouTube Data API key (search) |
 | `SUR_SPOTIFY_CLIENTID`, `SUR_SPOTIFY_CLIENTSECRET` | Spotify credentials (optional, Spotify links are disabled without them) |
 | `SUR_PLUGINS` | Comma-separated plugins to enable, in start order. Unset or empty enables all. An unknown or duplicate name stops the bot at startup. |
 | `SUR_RAJD_CHANNEL` | Channel ID the `!rajd` command posts to (default `1006248135737221251`). A non-numeric value stops the bot at startup. |
@@ -104,7 +103,9 @@ reported in the text channel (`Failed to play song`) with the queue kept.
 
 - `!play <query>` uses the whole query, spaces included. Without arguments it shows its usage.
   When the bot is not in voice, the author has to be in a voice channel (`Join a voice channel
-  first.`). A YouTube video, playlist (`list=`), Spotify link or free-text search is accepted.
+  first.`). A YouTube video, short or playlist link (`youtube.com`, `m.`/`music.youtube.com`, `youtu.be`;
+  a link with `list=` queues the whole playlist), a Spotify link or free-text search is accepted.
+  Lookups and searches run yt-dlp, so no YouTube API key is needed.
 - `!queue` shows the current song first, then one numbered line per song, at most 20 lines and
   then `… and N more`.
 - `!stop` stops the current song, keeps the queue and stays in voice; the next `!play` plays the
@@ -119,11 +120,7 @@ Known limitations:
 - Joining a voice channel cannot be cancelled and can take up to about 11s, so shutting down
   during a join can hit the 10s teardown limit.
 - The listening status is bot-wide, not per guild.
-- Spotify playlists and albums queue only their first track, and Spotify links must be in the
-  `?si=` form (a link without a query string is not recognised).
+- Spotify playlists and albums queue only their first track.
 - Hint texts hard-code the `!` prefix.
-- Every YouTube lookup creates its own metadata client, because the library's client is not safe
-  for concurrent use and sharing one behind a lock would let one guild's large playlist block
-  every other guild. The cost is a few extra requests per lookup (the client's visitor ID and
-  player cache are fetched again each time). A large playlist is still resolved video by video
-  and delays only the `!play` that asked for it. Lookups are cancelled at shutdown.
+- Each lookup starts a yt-dlp process (about 1-2s for a video). A large playlist is listed
+  in one run without opening each video, and lookups are cancelled at shutdown.

@@ -101,31 +101,18 @@ func encodeOptions() *dca.EncodeOptions {
 	}
 }
 
-// openEncoder starts the encoder for song. audio is nil when yt-dlp is not
-// used; otherwise the caller must Close it.
-func openEncoder(song *Song) (enc *dca.EncodeSession, audio *youtube.AudioStream, err error) {
-	options := encodeOptions()
-	if song.ID != "" {
-		audio, err = youtube.OpenAudioStream(song.ID)
-		if err == nil {
-			enc, err = dca.EncodeMem(audio, options)
-			if err != nil {
-				_ = audio.Close()
-				return nil, nil, fmt.Errorf("encode %s: %w", song.Title, err)
-			}
-			return enc, audio, nil
-		}
-		logger.Log.Warningf("could not start yt-dlp for %s, trying the youtube library's stream URL: %v", song.Title, err)
-		audio = nil
-	}
-	if song.StreamURL == "" {
-		return nil, nil, fmt.Errorf("stream URL is empty for song: %s", song.Title)
-	}
-	enc, err = dca.EncodeFile(song.StreamURL, options)
+// openEncoder starts yt-dlp and ffmpeg for song. The caller must Close audio.
+func openEncoder(song *Song) (*dca.EncodeSession, *youtube.AudioStream, error) {
+	audio, err := youtube.OpenAudioStream(song.ID)
 	if err != nil {
+		return nil, nil, fmt.Errorf("start yt-dlp for %s: %w", song.Title, err)
+	}
+	enc, err := dca.EncodeMem(audio, encodeOptions())
+	if err != nil {
+		_ = audio.Close()
 		return nil, nil, fmt.Errorf("encode %s: %w", song.Title, err)
 	}
-	return enc, nil, nil
+	return enc, audio, nil
 }
 
 // Play streams song to the channel and blocks until it ends, fails or ctx is
@@ -163,9 +150,7 @@ func (c *discordConn) Play(ctx context.Context, song *Song) error {
 	// ffmpeg can fail without the stream noticing.
 	if ffmpegErr := enc.Error(); ffmpegErr != nil {
 		logger.Log.Errorf("ffmpeg encoding error: %v\nffmpeg output:\n%s", ffmpegErr, enc.FFMPEGMessages())
-		if audio != nil {
-			logger.Log.Errorf("yt-dlp output: %s", audio.Stderr())
-		}
+		logger.Log.Errorf("yt-dlp output: %s", audio.Stderr())
 		return ffmpegErr
 	}
 	return nil
@@ -178,9 +163,7 @@ func (c *discordConn) Play(ctx context.Context, song *Song) error {
 // instead of playing buffered audio, and its result on done is received last.
 // encoderDone means the stream hit EOF, so ffmpeg has already exited.
 func endPlayback(audio *youtube.AudioStream, enc *dca.EncodeSession, done <-chan error, received, encoderDone bool) {
-	if audio != nil {
-		_ = audio.Close()
-	}
+	_ = audio.Close()
 	if !encoderDone {
 		stopEncoder(enc)
 	}
