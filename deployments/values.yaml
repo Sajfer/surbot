@@ -27,7 +27,6 @@ serviceAccount:
   name: ""
 
 discord_token: ""
-youtube_api: ""
 spotify_clientid: ""
 spotify_clientsecret: ""
 
@@ -56,13 +55,16 @@ securityContext:
   runAsUser: 10000
   allowPrivilegeEscalation: false
 
+# Playing music runs yt-dlp (Python, plus deno for YouTube's JS challenge) and
+# ffmpeg next to the bot; each !play also starts a yt-dlp lookup. A tight CPU
+# limit makes songs slow to start and can make audio stutter.
 resources:
   limits:
-    cpu: 100m
-    memory: 128Mi
+    cpu: 1000m
+    memory: 512Mi
   requests:
-    cpu: 100m
-    memory: 128Mi
+    cpu: 200m
+    memory: 256Mi
 
 autoscaling:
   enabled: false

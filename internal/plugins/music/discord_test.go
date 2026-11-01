@@ -157,16 +157,12 @@ func TestPlayStreamErrorWithStalledYtdlpReturnsTheErrorAndDoesNotHang(t *testing
 	requireProcessGone(t, pidFile)
 }
 
-func TestPlayFileToTheEndReturnsNil(t *testing.T) {
+func TestPlaySongToTheEndReturnsNil(t *testing.T) {
 	requireFFmpeg(t)
-	path := filepath.Join(t.TempDir(), "tone.wav")
-	gen := exec.Command("ffmpeg", "-loglevel", "quiet", "-f", "lavfi", "-i", "sine=frequency=440:duration=1", path) // #nosec G204 -- fixed test arguments
-	if out, err := gen.CombinedOutput(); err != nil {
-		t.Fatalf("generate audio: %v\n%s", err, out)
-	}
+	installFakeYtdlp(t, "exec ffmpeg -loglevel quiet -f lavfi -i sine=frequency=440:duration=1 -f wav -")
 	vc, frames := drainedVoice(t)
 
-	result := startPlay(context.Background(), vc, &Song{StreamURL: path, Title: "tone"})
+	result := startPlay(context.Background(), vc, &Song{ID: "dQw4w9WgXcQ", Title: "tone"})
 
 	select {
 	case r := <-result:
@@ -174,14 +170,14 @@ func TestPlayFileToTheEndReturnsNil(t *testing.T) {
 			t.Errorf("Play returned %v, want nil at end of file", r.err)
 		}
 	case <-time.After(10 * time.Second):
-		t.Fatal("Play did not finish a 1s file")
+		t.Fatal("Play did not finish a 1s song")
 	}
 	if len(frames) == 0 {
 		t.Error("no opus frames were sent")
 	}
 }
 
-func TestPlaySongWithoutIDOrStreamURLFailsAtOnce(t *testing.T) {
+func TestPlaySongWithoutIDFailsAtOnce(t *testing.T) {
 	vc, _ := drainedVoice(t)
 
 	result := startPlay(context.Background(), vc, &Song{Title: "nothing"})

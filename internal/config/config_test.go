@@ -13,7 +13,7 @@ import (
 // isolate clears the keys these tests read so the developer's shell cannot leak in.
 func isolate(t *testing.T) {
 	t.Helper()
-	for _, k := range []string{"SUR_TOKEN", "SUR_PLUGINS", "SUR_YOUTUBE_API"} {
+	for _, k := range []string{"SUR_TOKEN", "SUR_PLUGINS", "SUR_EXAMPLE_KEY"} {
 		t.Setenv(k, "")
 	}
 }
@@ -83,8 +83,8 @@ func TestLoadReadsTokenFromEnvWhenFileIsMissing(t *testing.T) {
 func TestLoadRealEnvOverridesEnvFile(t *testing.T) {
 	isolate(t)
 	t.Setenv("SUR_TOKEN", "fromenv")
-	t.Setenv("SUR_YOUTUBE_API", "envkey")
-	path := writeEnv(t, "SUR_TOKEN=fromfile\nSUR_YOUTUBE_API=filekey\n")
+	t.Setenv("SUR_EXAMPLE_KEY", "envkey")
+	path := writeEnv(t, "SUR_TOKEN=fromfile\nSUR_EXAMPLE_KEY=filekey\n")
 
 	cfg, err := Load(path)
 
@@ -94,8 +94,8 @@ func TestLoadRealEnvOverridesEnvFile(t *testing.T) {
 	if cfg.Token != "fromenv" {
 		t.Errorf("Token = %q, want %q", cfg.Token, "fromenv")
 	}
-	if got := cfg.Get("YOUTUBE_API"); got != "envkey" {
-		t.Errorf("Get(YOUTUBE_API) = %q, want %q", got, "envkey")
+	if got := cfg.Get("EXAMPLE_KEY"); got != "envkey" {
+		t.Errorf("Get(EXAMPLE_KEY) = %q, want %q", got, "envkey")
 	}
 }
 
@@ -169,28 +169,28 @@ func TestLoadParsesPluginList(t *testing.T) {
 func TestGetReadsPluginSettingFromEnv(t *testing.T) {
 	isolate(t)
 	t.Setenv("SUR_TOKEN", "abc")
-	t.Setenv("SUR_YOUTUBE_API", "k")
+	t.Setenv("SUR_EXAMPLE_KEY", "k")
 
 	cfg, err := Load(filepath.Join(t.TempDir(), "missing.env"))
 
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if got := cfg.Get("YOUTUBE_API"); got != "k" {
-		t.Errorf("Get(YOUTUBE_API) = %q, want %q", got, "k")
+	if got := cfg.Get("EXAMPLE_KEY"); got != "k" {
+		t.Errorf("Get(EXAMPLE_KEY) = %q, want %q", got, "k")
 	}
 }
 
 func TestGetReadsPluginSettingFromEnvFile(t *testing.T) {
 	isolate(t)
 
-	cfg, err := Load(writeEnv(t, "SUR_TOKEN=abc\nSUR_YOUTUBE_API=k\n"))
+	cfg, err := Load(writeEnv(t, "SUR_TOKEN=abc\nSUR_EXAMPLE_KEY=k\n"))
 
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if got := cfg.Get("YOUTUBE_API"); got != "k" {
-		t.Errorf("Get(YOUTUBE_API) = %q, want %q", got, "k")
+	if got := cfg.Get("EXAMPLE_KEY"); got != "k" {
+		t.Errorf("Get(EXAMPLE_KEY) = %q, want %q", got, "k")
 	}
 }
 

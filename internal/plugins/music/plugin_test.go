@@ -222,7 +222,6 @@ func (h *recordingHook) Fire(e *logrus.Entry) error {
 func newRegistrar(t *testing.T) (*fakeRegistrar, *recordingHook) {
 	t.Helper()
 	t.Setenv("SUR_TOKEN", "token")
-	t.Setenv("SUR_YOUTUBE_API", "")
 	t.Setenv("SUR_SPOTIFY_CLIENTID", "")
 	t.Setenv("SUR_SPOTIFY_CLIENTSECRET", "")
 	cfg, err := config.Load(filepath.Join(t.TempDir(), "missing.env"))

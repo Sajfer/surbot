@@ -16,12 +16,9 @@ import (
 	"gitlab.com/sajfer/surbot/internal/logger"
 )
 
-var (
-	urlRegex      = regexp.MustCompile(`^(?:https?:\/\/open\.spotify\.com\/(?:playlist\/|album\/|track\/)([a-zA-Z0-9]+))(?:.*)`)
-	playlistRegex = regexp.MustCompile(`^(https:\/\/open\.spotify\.com\/playlist\/[[a-zA-Z0-9]{22}\?.*)$`)
-	albumRegex    = regexp.MustCompile(`^(https:\/\/open\.spotify\.com\/album\/[[a-zA-Z0-9]{22}\?.*)$`)
-	trackRegex    = regexp.MustCompile(`^(https:\/\/open\.spotify\.com\/track\/[[a-zA-Z0-9]{22}\?.*)$`)
-)
+// linkRegex matches track, album and playlist links, with or without a
+// localised path (/intl-sv/) and a query string (?si=...).
+var linkRegex = regexp.MustCompile(`^https?://open\.spotify\.com/(?:intl-[a-zA-Z-]+/)?(track|album|playlist)/([a-zA-Z0-9]{22})(?:[/?#]\S*)?$`)
 
 // Client talks to the Spotify Web API with client-credentials auth.
 type Client struct {
@@ -91,22 +88,13 @@ func (c *Client) api(ctx context.Context) (*spotifyapi.Client, error) {
 }
 
 // IsURL reports whether text is a Spotify track, album or playlist link.
-func IsURL(text string) bool { return urlRegex.MatchString(text) }
+func IsURL(text string) bool { return linkRegex.MatchString(text) }
 
-func getID(url string) string {
-	matches := urlRegex.FindStringSubmatch(url)
-	if matches == nil {
-		return ""
-	}
-	return matches[1]
-}
-
-// Search returns the tracks behind a Spotify link. A link of an unsupported
-// form yields an empty playlist.
+// Search returns the tracks behind a Spotify link. Text that is not a
+// Spotify link yields an empty playlist.
 func (c *Client) Search(ctx context.Context, url string) (*Playlist, error) {
-	id := getID(url)
-
-	switch linkKind(url) {
+	k, id := parseLink(url)
+	switch k {
 	case kindTrack:
 		return c.GetTrack(ctx, id)
 	case kindAlbum:
@@ -126,16 +114,13 @@ const (
 	kindPlaylist
 )
 
-func linkKind(url string) kind {
-	switch {
-	case trackRegex.MatchString(url):
-		return kindTrack
-	case albumRegex.MatchString(url):
-		return kindAlbum
-	case playlistRegex.MatchString(url):
-		return kindPlaylist
+// parseLink returns the kind and ID of a Spotify link, or kindNone.
+func parseLink(url string) (kind, string) {
+	m := linkRegex.FindStringSubmatch(url)
+	if m == nil {
+		return kindNone, ""
 	}
-	return kindNone
+	return map[string]kind{"track": kindTrack, "album": kindAlbum, "playlist": kindPlaylist}[m[1]], m[2]
 }
 
 // GetTrack returns the track with the given Spotify ID.

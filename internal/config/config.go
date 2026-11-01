@@ -62,7 +62,7 @@ func Load(envFile string) (*Config, error) {
 	return cfg, nil
 }
 
-// Get returns a plugin setting, e.g. Get("YOUTUBE_API") reads SUR_YOUTUBE_API.
+// Get returns a plugin setting, e.g. Get("RAJD_CHANNEL") reads SUR_RAJD_CHANNEL.
 func (c *Config) Get(key string) string {
 	return c.v.GetString(strings.ToLower(key))
 }

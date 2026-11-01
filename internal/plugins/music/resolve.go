@@ -17,17 +17,20 @@ type Song struct {
 	Duration  time.Duration
 	Thumbnail string
 	ID        string // YouTube video ID, streamed through yt-dlp
-	StreamURL string // direct URL used when yt-dlp is unavailable
 }
 
-var youtubeURLRegex = regexp.MustCompile(`^(?:https?\:\/\/)?(?:www\.)?(?:(?:youtube\.com\/watch\?v=)|(?:youtu\.be\/))([a-zA-Z0-9\-_]{11})+.*$|^(?:https:\/\/www\.youtube\.com\/playlist\?list=)([a-zA-Z0-9\-_].*).*$`)
+// youtubeURLRegex matches the YouTube links yt-dlp is asked about directly:
+// videos, shorts, live streams and playlists, on any of YouTube's hosts.
+// Anything else, a channel page included, is treated as search text.
+var youtubeURLRegex = regexp.MustCompile(`^(?:https?://)?(?:(?:www|m|music)\.)?(?:youtube\.com/(?:watch\?|playlist\?|shorts/|live/|embed/)|youtu\.be/)\S+$`)
 
 func isYouTubeURL(text string) bool { return youtubeURLRegex.MatchString(text) }
 
 type videoAPI interface {
-	// SearchVideo returns the watch URL of the first match, or an error when there is none.
-	SearchVideo(ctx context.Context, query string) (string, error)
-	GetVideoInfo(ctx context.Context, url string) (*youtube.Playlist, error)
+	// Search returns the first match, or an error when there is none.
+	Search(ctx context.Context, query string) (*youtube.Video, error)
+	// Lookup returns the video behind a link, or every video of a playlist.
+	Lookup(ctx context.Context, url string) ([]*youtube.Video, error)
 }
 
 type trackAPI interface {
@@ -54,7 +57,7 @@ func newResolver(yt videoAPI, sp trackAPI) *clients {
 func (c *clients) Resolve(ctx context.Context, query string) ([]*Song, error) {
 	switch {
 	case isYouTubeURL(query):
-		return c.fromVideoURL(ctx, query, true)
+		return c.fromLink(ctx, query)
 	case spotify.IsURL(query):
 		return c.fromSpotify(ctx, query)
 	}
@@ -62,11 +65,11 @@ func (c *clients) Resolve(ctx context.Context, query string) ([]*Song, error) {
 }
 
 func (c *clients) fromSearch(ctx context.Context, query string) ([]*Song, error) {
-	url, err := c.yt.SearchVideo(ctx, query)
+	video, err := c.yt.Search(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("search %q: %w", query, err)
 	}
-	return c.fromVideoURL(ctx, url, false)
+	return []*Song{toSong(video)}, nil
 }
 
 func (c *clients) fromSpotify(ctx context.Context, query string) ([]*Song, error) {
@@ -83,27 +86,21 @@ func (c *clients) fromSpotify(ctx context.Context, query string) ([]*Song, error
 	return c.fromSearch(ctx, fmt.Sprintf("%s - %s", tracks.Songs[0].Artist, tracks.Songs[0].Name))
 }
 
-func (c *clients) fromVideoURL(ctx context.Context, url string, all bool) ([]*Song, error) {
-	playlist, err := c.yt.GetVideoInfo(ctx, url)
+func (c *clients) fromLink(ctx context.Context, url string) ([]*Song, error) {
+	videos, err := c.yt.Lookup(ctx, url)
 	if err != nil {
-		return nil, fmt.Errorf("video info for %s: %w", url, err)
+		return nil, fmt.Errorf("look up %s: %w", url, err)
 	}
-	videos := playlist.Songs
 	if len(videos) == 0 {
 		return nil, fmt.Errorf("no videos found for %s", url)
 	}
-	if !all {
-		videos = videos[:1]
-	}
 	songs := make([]*Song, len(videos))
 	for i, v := range videos {
-		songs[i] = &Song{
-			Title:     v.Title,
-			Duration:  time.Duration(v.Duration * float64(time.Second)),
-			Thumbnail: v.Thumbnail,
-			ID:        v.ID,
-			StreamURL: v.StreamUrl,
-		}
+		songs[i] = toSong(v)
 	}
 	return songs, nil
+}
+
+func toSong(v *youtube.Video) *Song {
+	return &Song{Title: v.Title, Duration: v.Duration, Thumbnail: v.Thumbnail, ID: v.ID}
 }

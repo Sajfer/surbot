@@ -45,7 +45,7 @@ func (p *Plugin) Name() string { return "music" }
 // are created when the first music command of a guild arrives.
 func (p *Plugin) Setup(ctx context.Context, r core.Registrar) error {
 	svc := r.Services()
-	yt := youtube.New(svc.Config.Get("YOUTUBE_API"), svc.HTTP)
+	yt := youtube.New()
 
 	var sp trackAPI
 	id, secret := svc.Config.Get("SPOTIFY_CLIENTID"), svc.Config.Get("SPOTIFY_CLIENTSECRET")
