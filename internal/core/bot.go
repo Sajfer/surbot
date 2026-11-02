@@ -32,15 +32,43 @@ type Bot struct {
 	plugins []Plugin
 	scopes  []*scope
 	router  *router
+
+	healthAddr string  // "" turns the health endpoint off
+	health     *health // nil when healthAddr is ""
 }
 
-// New builds a Bot with the plugins selected by cfg.Plugins (all of catalog when unset).
+// New builds a Bot with the plugins selected by cfg.Plugins (all of catalog
+// when unset). Its /healthz listens on SUR_HEALTH_ADDR (default :8080);
+// "off" turns it off.
 func New(cfg *config.Config, prefix string, catalog []Plugin) (*Bot, error) {
 	session, err := discordgo.New("Bot " + cfg.Token)
 	if err != nil {
 		return nil, fmt.Errorf("create Discord session: %w", err)
 	}
-	return newBot(session, cfg, prefix, catalog)
+	b, err := newBot(session, cfg, prefix, catalog)
+	if err != nil {
+		return nil, err
+	}
+	switch addr := cfg.Get("HEALTH_ADDR"); addr {
+	case "off":
+	case "":
+		b.enableHealth(DefaultHealthAddr, session)
+	default:
+		b.enableHealth(addr, session)
+	}
+	return b, nil
+}
+
+func (b *Bot) enableHealth(addr string, session *discordgo.Session) {
+	b.healthAddr = addr
+	b.health = &health{
+		lastAck: func() time.Time {
+			session.RLock()
+			defer session.RUnlock()
+			return session.LastHeartbeatAck
+		},
+		now: time.Now,
+	}
 }
 
 func newBot(gw gateway, cfg *config.Config, prefix string, catalog []Plugin) (*Bot, error) {
@@ -96,6 +124,15 @@ func selectPlugins(names []string, catalog []Plugin) ([]Plugin, error) {
 // stops routing, waits for running commands (bounded), tears the plugins down in
 // reverse order and closes the gateway. A nil error means a clean shutdown.
 func (b *Bot) Run(ctx context.Context) error {
+	if b.health != nil {
+		srv, addr, err := startHealth(b.healthAddr, b.health)
+		if err != nil {
+			return err
+		}
+		defer stopHealth(srv)
+		logger.Log.Infof("health endpoint on %s/healthz", addr)
+	}
+
 	ready := 0
 	for i, p := range b.plugins {
 		if err := p.Setup(ctx, b.scopes[i]); err != nil {
@@ -118,6 +155,9 @@ func (b *Bot) Run(ctx context.Context) error {
 		return errors.Join(fmt.Errorf("open Discord connection: %w", err), b.teardown(ready), b.gw.Close())
 	}
 
+	if b.health != nil {
+		b.health.open.Store(true)
+	}
 	logger.Log.Info("Bot is now running. Press CTRL-C to exit.")
 	<-ctx.Done()
 	logger.Log.Info("Shutting down")
