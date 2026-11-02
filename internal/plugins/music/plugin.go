@@ -53,7 +53,7 @@ func (p *Plugin) Setup(ctx context.Context, r core.Registrar) error {
 		svc.Log.Warning("spotify disabled: no credentials")
 	} else {
 		loginCtx, cancel := context.WithTimeout(ctx, spotifyLogin)
-		client, err := spotify.New(loginCtx, id, secret)
+		client, err := spotify.New(loginCtx, id, secret, svc.Log)
 		cancel()
 		if err != nil {
 			// Without working Spotify credentials the bot still runs; only
@@ -66,7 +66,8 @@ func (p *Plugin) Setup(ctx context.Context, r core.Registrar) error {
 
 	log := svc.Log
 	p.start(newResolver(yt, sp), func(ctx context.Context, guildID string, s *discordgo.Session) *player {
-		return newPlayer(ctx, guildID, discordVoice{s: s}, discordAnnouncer{s: s, log: log}, idleTimeout, log.WithField("guild", guildID))
+		guildLog := log.WithField("guild", guildID)
+		return newPlayer(ctx, guildID, discordVoice{s: s, log: guildLog}, discordAnnouncer{s: s, log: log}, idleTimeout, guildLog)
 	}, log)
 
 	for _, spec := range commandSpecs {
