@@ -5,16 +5,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"regexp"
-	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	spotifyapi "github.com/zmb3/spotify/v2"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
-
-	"github.com/sajfer/surbot/internal/logger"
 )
 
 const (
@@ -22,19 +21,19 @@ const (
 	MaxTracks = 1000
 	// lookupTimeout bounds one link lookup, all pages included.
 	lookupTimeout = 30 * time.Second
+	// tokenTimeout bounds a token refresh, which runs outside any lookup's context.
+	tokenTimeout = 10 * time.Second
 )
 
 // linkRegex matches track, album and playlist links, with or without a
 // localised path (/intl-sv/) and a query string (?si=...).
 var linkRegex = regexp.MustCompile(`^https?://open\.spotify\.com/(?:intl-[a-zA-Z-]+/)?(track|album|playlist)/([a-zA-Z0-9]{22})(?:[/?#]\S*)?$`)
 
-// Client talks to the Spotify Web API with client-credentials auth.
+// Client talks to the Spotify Web API with client-credentials auth. It is
+// safe for concurrent use.
 type Client struct {
-	config *clientcredentials.Config
-
-	mu     sync.Mutex // guards client and token
 	client *spotifyapi.Client
-	token  *oauth2.Token
+	log    *logrus.Entry
 }
 
 // Song is one track: its name, first artist, length and cover art.
@@ -45,49 +44,29 @@ type Song struct {
 	Thumbnail string
 }
 
-// New fetches a token and returns an error if Spotify rejects the credentials.
-// ctx bounds only that first token request.
-func New(ctx context.Context, clientID, clientSecret string) (*Client, error) {
-	config := &clientcredentials.Config{
+// New fetches a token and returns an error if Spotify rejects the
+// credentials. ctx bounds only that first token request; later tokens are
+// fetched as needed, shortly before the current one expires.
+func New(ctx context.Context, clientID, clientSecret string, log *logrus.Entry) (*Client, error) {
+	return newClient(ctx, &clientcredentials.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		TokenURL:     spotifyauth.TokenURL,
-	}
-
-	client, token, err := newClient(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Client{client: client, token: token, config: config}, nil
+	}, log)
 }
 
-// newClient fetches a token under ctx. The API client is bound to
-// context.Background() because oauth2 keeps the context it is given for every
-// later token refresh.
-func newClient(ctx context.Context, config *clientcredentials.Config) (*spotifyapi.Client, *oauth2.Token, error) {
+func newClient(ctx context.Context, config *clientcredentials.Config, log *logrus.Entry, opts ...spotifyapi.ClientOption) (*Client, error) {
 	token, err := config.Token(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to retrieve spotify token: %w", err)
+		return nil, fmt.Errorf("failed to retrieve spotify token: %w", err)
 	}
 
-	httpClient := spotifyauth.New().Client(context.Background(), token)
-	return spotifyapi.New(httpClient), token, nil
-}
-
-// api returns a client with a valid token.
-func (c *Client) api(ctx context.Context) (*spotifyapi.Client, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.token.Expiry.Before(time.Now()) {
-		logger.Log.Info("Token have expired, generating new token")
-		client, token, err := newClient(ctx, c.config)
-		if err != nil {
-			return nil, err
-		}
-		c.client, c.token = client, token
-	}
-	return c.client, nil
+	// The transport refreshes the token on the first request after it
+	// expires, without that request's context, so the refresh gets its own
+	// timeout through the context the token source keeps.
+	refreshCtx := context.WithValue(context.Background(), oauth2.HTTPClient, &http.Client{Timeout: tokenTimeout})
+	tokens := oauth2.ReuseTokenSource(token, config.TokenSource(refreshCtx))
+	return &Client{client: spotifyapi.New(oauth2.NewClient(refreshCtx, tokens), opts...), log: log}, nil
 }
 
 // IsURL reports whether text is a Spotify track, album or playlist link.
@@ -101,20 +80,16 @@ func (c *Client) Search(ctx context.Context, url string) ([]Song, error) {
 	if k == kindNone {
 		return nil, nil
 	}
-	api, err := c.api(ctx)
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := context.WithTimeout(ctx, lookupTimeout)
 	defer cancel()
 
 	switch k {
 	case kindTrack:
-		return track(ctx, api, spotifyapi.ID(id))
+		return c.track(ctx, spotifyapi.ID(id))
 	case kindAlbum:
-		return album(ctx, api, spotifyapi.ID(id))
+		return c.album(ctx, spotifyapi.ID(id))
 	default:
-		return playlist(ctx, api, spotifyapi.ID(id))
+		return c.playlist(ctx, spotifyapi.ID(id))
 	}
 }
 
@@ -136,8 +111,8 @@ func parseLink(url string) (kind, string) {
 	return map[string]kind{"track": kindTrack, "album": kindAlbum, "playlist": kindPlaylist}[m[1]], m[2]
 }
 
-func track(ctx context.Context, api *spotifyapi.Client, id spotifyapi.ID) ([]Song, error) {
-	t, err := api.GetTrack(ctx, id)
+func (c *Client) track(ctx context.Context, id spotifyapi.ID) ([]Song, error) {
+	t, err := c.client.GetTrack(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get track %s: %w", id, err)
 	}
@@ -147,8 +122,8 @@ func track(ctx context.Context, api *spotifyapi.Client, id spotifyapi.ID) ([]Son
 	return nil, nil
 }
 
-func album(ctx context.Context, api *spotifyapi.Client, id spotifyapi.ID) ([]Song, error) {
-	a, err := api.GetAlbum(ctx, id)
+func (c *Client) album(ctx context.Context, id spotifyapi.ID) ([]Song, error) {
+	a, err := c.client.GetAlbum(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get album %s: %w", id, err)
 	}
@@ -164,16 +139,16 @@ func album(ctx context.Context, api *spotifyapi.Client, id spotifyapi.ID) ([]Son
 		if len(songs) >= MaxTracks {
 			return songs[:MaxTracks], nil
 		}
-		if done, err := pageDone(api.NextPage(ctx, page), songs); done {
+		if done, err := c.pageDone(c.client.NextPage(ctx, page), songs); done {
 			return songs, err
 		}
 	}
 }
 
-func playlist(ctx context.Context, api *spotifyapi.Client, id spotifyapi.ID) ([]Song, error) {
+func (c *Client) playlist(ctx context.Context, id spotifyapi.ID) ([]Song, error) {
 	// The playlist object holds the first page of tracks; later pages
 	// follow the next link Spotify returns.
-	p, err := api.GetPlaylist(ctx, id)
+	p, err := c.client.GetPlaylist(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get playlist %s: %w", id, err)
 	}
@@ -193,7 +168,7 @@ func playlist(ctx context.Context, api *spotifyapi.Client, id spotifyapi.ID) ([]
 		if len(songs) >= MaxTracks {
 			return songs[:MaxTracks], nil
 		}
-		if done, err := pageDone(api.NextPage(ctx, page), songs); done {
+		if done, err := c.pageDone(c.client.NextPage(ctx, page), songs); done {
 			return songs, err
 		}
 	}
@@ -201,14 +176,14 @@ func playlist(ctx context.Context, api *spotifyapi.Client, id spotifyapi.ID) ([]
 
 // pageDone reports whether paging stops after NextPage returned err. A
 // failed page after some songs were found keeps those songs.
-func pageDone(err error, songs []Song) (bool, error) {
+func (c *Client) pageDone(err error, songs []Song) (bool, error) {
 	switch {
 	case err == nil:
 		return false, nil
 	case errors.Is(err, spotifyapi.ErrNoMorePages):
 		return true, nil
 	case len(songs) > 0:
-		logger.Log.WithError(err).Warningf("spotify: stopped after %d tracks", len(songs))
+		c.log.WithError(err).Warningf("spotify: stopped after %d tracks", len(songs))
 		return true, nil
 	}
 	return true, fmt.Errorf("next page: %w", err)
