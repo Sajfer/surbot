@@ -12,7 +12,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/sajfer/surbot/internal/core"
-	"github.com/sajfer/surbot/internal/logger"
 	"github.com/sajfer/surbot/internal/plugins/music/youtube"
 )
 
@@ -23,13 +22,14 @@ const (
 
 // discordVoice joins voice channels through a discordgo session.
 type discordVoice struct {
-	s *discordgo.Session
+	s   *discordgo.Session
+	log *logrus.Entry
 }
 
 // Join returns once the voice connection is ready, or an error. A failed join
 // leaves the channel again so the bot does not linger in it.
 func (d discordVoice) Join(guildID, channelID string) (voiceConn, error) {
-	setVoiceLogLevel(d.s, guildID)
+	setVoiceLogLevel(d.s, guildID, d.log)
 	vc, err := d.s.ChannelVoiceJoin(guildID, channelID, false, true)
 	if err != nil {
 		d.s.RLock()
@@ -44,9 +44,12 @@ func (d discordVoice) Join(guildID, channelID string) (voiceConn, error) {
 			return nil, err
 		}
 	}
-	// Wait for voice connection to be fully ready before streaming.
+	// discordgo reports the connection ready before the DAVE (end-to-end
+	// encryption) handshake has run, and until it finishes frames go out
+	// without that layer, so listeners in an encrypted call cannot decode
+	// the start of the song. discordgo does not expose when DAVE is active.
 	time.Sleep(500 * time.Millisecond)
-	return &discordConn{vc: vc}, nil
+	return &discordConn{vc: vc, log: d.log}, nil
 }
 
 func voiceReady(vc *discordgo.VoiceConnection) bool {
@@ -58,8 +61,8 @@ func voiceReady(vc *discordgo.VoiceConnection) bool {
 // setVoiceLogLevel makes discordgo log the voice handshake when surbot runs at
 // debug level. A voice connection has its own log level, so it has to be
 // created with one before ChannelVoiceJoin starts the handshake.
-func setVoiceLogLevel(session *discordgo.Session, guildID string) {
-	if !logger.Log.IsLevelEnabled(logrus.DebugLevel) {
+func setVoiceLogLevel(session *discordgo.Session, guildID string, log *logrus.Entry) {
+	if !log.Logger.IsLevelEnabled(logrus.DebugLevel) {
 		return
 	}
 	session.Lock()
@@ -71,7 +74,8 @@ func setVoiceLogLevel(session *discordgo.Session, guildID string) {
 
 // discordConn is one joined voice channel.
 type discordConn struct {
-	vc *discordgo.VoiceConnection
+	vc  *discordgo.VoiceConnection
+	log *logrus.Entry
 }
 
 // Leave disconnects from the channel. Disconnect writes to the gateway socket
@@ -104,14 +108,14 @@ func encodeOptions() *dca.EncodeOptions {
 // openEncoder starts yt-dlp and ffmpeg for song. A song without a video ID
 // (a Spotify track) is first matched to a YouTube video by its query and
 // length. The caller must Close audio.
-func openEncoder(ctx context.Context, song *Song) (*dca.EncodeSession, *youtube.AudioStream, error) {
+func openEncoder(ctx context.Context, song *Song, log *logrus.Entry) (*dca.EncodeSession, *youtube.AudioStream, error) {
 	id := song.ID
 	if id == "" && song.Query != "" {
 		video, err := youtube.New().Match(ctx, song.Query, song.Duration)
 		if err != nil {
 			return nil, nil, fmt.Errorf("find %s on YouTube: %w", song.Query, err)
 		}
-		logger.Log.Infof("matched %q (%s) to %q (%s, %s)", song.Query, formatDuration(song.Duration), video.Title, formatDuration(video.Duration), video.ID)
+		log.Infof("matched %q (%s) to %q (%s, %s)", song.Query, formatDuration(song.Duration), video.Title, formatDuration(video.Duration), video.ID)
 		id = video.ID
 	}
 	audio, err := youtube.OpenAudioStream(id)
@@ -130,12 +134,12 @@ func openEncoder(ctx context.Context, song *Song) (*dca.EncodeSession, *youtube.
 // cancelled (then it returns ctx.Err()). When it returns, yt-dlp and ffmpeg
 // have exited and the dca streaming goroutine is done.
 func (c *discordConn) Play(ctx context.Context, song *Song) error {
-	enc, audio, err := openEncoder(ctx, song)
+	enc, audio, err := openEncoder(ctx, song, c.log)
 	if err != nil {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		logger.Log.Errorf("Could not encode stream: %v", err)
+		c.log.Errorf("Could not encode stream: %v", err)
 		return err
 	}
 
@@ -151,20 +155,20 @@ func (c *discordConn) Play(ctx context.Context, song *Song) error {
 	}
 
 	encoderDone := received && (streamErr == nil || errors.Is(streamErr, io.EOF))
-	endPlayback(audio, enc, done, received, encoderDone)
+	endPlayback(audio, enc, done, received, encoderDone, c.log)
 
 	if ctx.Err() != nil && !received {
 		return ctx.Err()
 	}
 	if streamErr != nil && !errors.Is(streamErr, io.EOF) {
-		logger.Log.Errorf("error while playing audio: %v", streamErr)
-		logger.Log.Errorf("ffmpeg output: %s", enc.FFMPEGMessages())
+		c.log.Errorf("error while playing audio: %v", streamErr)
+		c.log.Errorf("ffmpeg output: %s", enc.FFMPEGMessages())
 		return streamErr
 	}
 	// ffmpeg can fail without the stream noticing.
 	if ffmpegErr := enc.Error(); ffmpegErr != nil {
-		logger.Log.Errorf("ffmpeg encoding error: %v\nffmpeg output:\n%s", ffmpegErr, enc.FFMPEGMessages())
-		logger.Log.Errorf("yt-dlp output: %s", audio.Stderr())
+		c.log.Errorf("ffmpeg encoding error: %v\nffmpeg output:\n%s", ffmpegErr, enc.FFMPEGMessages())
+		c.log.Errorf("yt-dlp output: %s", audio.Stderr())
 		return ffmpegErr
 	}
 	return nil
@@ -176,7 +180,7 @@ func (c *discordConn) Play(ctx context.Context, song *Song) error {
 // first; Cleanup then drains the frames so the streaming goroutine reaches EOF
 // instead of playing buffered audio, and its result on done is received last.
 // encoderDone means the stream hit EOF, so ffmpeg has already exited.
-func endPlayback(audio *youtube.AudioStream, enc *dca.EncodeSession, done <-chan error, received, encoderDone bool) {
+func endPlayback(audio *youtube.AudioStream, enc *dca.EncodeSession, done <-chan error, received, encoderDone bool, log *logrus.Entry) {
 	_ = audio.Close()
 	if !encoderDone {
 		stopEncoder(enc)
@@ -184,7 +188,7 @@ func endPlayback(audio *youtube.AudioStream, enc *dca.EncodeSession, done <-chan
 	enc.Cleanup()
 	if !received {
 		if err := <-done; err != nil && !errors.Is(err, io.EOF) {
-			logger.Log.Debugf("stream ended with error after cancel: %v", err)
+			log.Debugf("stream ended with error after cancel: %v", err)
 		}
 	}
 }

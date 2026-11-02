@@ -86,7 +86,7 @@ func startPlay(ctx context.Context, vc *discordgo.VoiceConnection, song *Song) <
 	out := make(chan playResult, 1)
 	go func() {
 		start := time.Now()
-		err := (&discordConn{vc: vc}).Play(ctx, song)
+		err := (&discordConn{vc: vc, log: quietLog()}).Play(ctx, song)
 		out <- playResult{err: err, elapsed: time.Since(start)}
 	}()
 	return out

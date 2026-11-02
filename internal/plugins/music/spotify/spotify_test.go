@@ -3,14 +3,17 @@ package spotify
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	spotifyapi "github.com/zmb3/spotify/v2"
-	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/clientcredentials"
 )
 
 func TestLinkParsing(t *testing.T) {
@@ -88,9 +91,11 @@ func fakeAPI(t *testing.T, routes map[string]string) *Client {
 	}))
 	t.Cleanup(srv.Close)
 	base = srv.URL + "/"
+	l := logrus.New()
+	l.SetOutput(io.Discard)
 	return &Client{
 		client: spotifyapi.New(srv.Client(), spotifyapi.WithBaseURL(base)),
-		token:  &oauth2.Token{Expiry: time.Now().Add(time.Hour)},
+		log:    logrus.NewEntry(l),
 	}
 }
 
@@ -206,5 +211,81 @@ func TestSearchFirstRequestFailureIsAnError(t *testing.T) {
 
 	if songs, err := c.Search(context.Background(), playlistURL); err == nil {
 		t.Errorf("Search returned %s and no error", names(songs))
+	}
+}
+
+// tokenServer hands out tokens t1, t2, ... valid for expiresIn seconds and
+// serves one track, recording the bearer token of each API request.
+func tokenServer(t *testing.T, expiresIn int) (*Client, *int, *[]string) {
+	t.Helper()
+	var mu sync.Mutex
+	issued := 0
+	var bearers []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/token" {
+			issued++
+			_, _ = fmt.Fprintf(w, `{"access_token":"t%d","token_type":"Bearer","expires_in":%d}`, issued, expiresIn)
+			return
+		}
+		bearers = append(bearers, strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+		_, _ = fmt.Fprint(w, trackJSON("song", "Artist", 1000))
+	}))
+	t.Cleanup(srv.Close)
+	l := logrus.New()
+	l.SetOutput(io.Discard)
+	c, err := newClient(context.Background(), &clientcredentials.Config{
+		ClientID: "id", ClientSecret: "secret", TokenURL: srv.URL + "/token",
+	}, logrus.NewEntry(l), spotifyapi.WithBaseURL(srv.URL+"/"))
+	if err != nil {
+		t.Fatalf("newClient: %v", err)
+	}
+	return c, &issued, &bearers
+}
+
+func TestValidTokenIsReusedAcrossLookups(t *testing.T) {
+	c, issued, bearers := tokenServer(t, 3600)
+
+	for range 3 {
+		if _, err := c.Search(context.Background(), "https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT"); err != nil {
+			t.Fatalf("Search: %v", err)
+		}
+	}
+
+	if *issued != 1 || strings.Join(*bearers, ",") != "t1,t1,t1" {
+		t.Errorf("issued %d tokens, requests used %v; want 1 token used 3 times", *issued, *bearers)
+	}
+}
+
+func TestExpiringTokenIsRefreshedBeforeTheRequest(t *testing.T) {
+	// A token with 5s left is inside oauth2's 10s refresh margin, so every
+	// request fetches a new one instead of sending one about to expire.
+	c, issued, bearers := tokenServer(t, 5)
+
+	for range 2 {
+		if _, err := c.Search(context.Background(), "https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT"); err != nil {
+			t.Fatalf("Search: %v", err)
+		}
+	}
+
+	if *issued != 3 || strings.Join(*bearers, ",") != "t2,t3" {
+		t.Errorf("issued %d tokens, requests used %v; want t1 at login, then t2 and t3", *issued, *bearers)
+	}
+}
+
+func TestNewWithRejectedCredentialsFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = fmt.Fprint(w, `{"error":"invalid_client"}`)
+	}))
+	t.Cleanup(srv.Close)
+
+	_, err := newClient(context.Background(), &clientcredentials.Config{ClientID: "id", ClientSecret: "bad", TokenURL: srv.URL}, nil)
+
+	if err == nil {
+		t.Fatal("newClient returned no error for rejected credentials")
 	}
 }
