@@ -22,6 +22,7 @@ and `TOKEN` both work, the prefixed key wins if both are present).
 | `SUR_PLUGINS` | Comma-separated plugins to enable, in start order. Unset or empty enables all. An unknown or duplicate name stops the bot at startup. |
 | `SUR_RAJD_CHANNEL` | Channel ID the `!rajd` command posts to (default `1006248135737221251`). A non-numeric value stops the bot at startup. |
 | `SUR_DEBUG` | Any non-empty value turns on debug logging |
+| `SUR_HEALTH_ADDR` | Where `/healthz` listens (default `:8080`, `off` turns it off). It answers 503 when the bot has had no Discord gateway heartbeat for 3 minutes; the Helm chart's liveness probe uses it. |
 
 ## Commands
 

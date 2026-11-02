@@ -39,6 +39,18 @@ plugins: ""
 # Always quote the ID, e.g. rajd_channel: "1006248135737221251".
 rajd_channel: ""
 
+# /healthz fails when the bot has had no Discord gateway heartbeat for 3
+# minutes (discordgo's own reconnects have kept failing). With these values a
+# dead connection is restarted after about 4-5 minutes. Set to null to drop it.
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: health
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+
 podAnnotations: {}
 
 podSecurityContext:

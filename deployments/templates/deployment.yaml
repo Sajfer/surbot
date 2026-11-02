@@ -71,14 +71,14 @@ spec:
           {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-            #livenessProbe:
-            #httpGet:
-            #  path: /healthz
-            #  port: 8080
-            #readinessProbe:
-            #httpGet:
-            #  path: /healthz
-            #  port: 8080
+          ports:
+            - name: health
+              containerPort: 8080
+              protocol: TCP
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
