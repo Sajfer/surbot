@@ -15,7 +15,7 @@ FROM alpine:3.24 AS runner
 # current; Renovate bumps it (renovate.json). deno is the JavaScript runtime
 # yt-dlp needs for YouTube.
 # renovate: datasource=github-releases depName=yt-dlp/yt-dlp
-ARG YTDLP_VERSION=2026.10.26
+ARG YTDLP_VERSION=2026.11.23
 
 RUN apk add --no-cache ffmpeg python3 deno && \
   apk add --no-cache --virtual .fetch curl && \
